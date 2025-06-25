@@ -4,6 +4,7 @@ import { z } from 'zod';
 import setupLogger from '../../shared/utils/logger';
 import { config } from '../../core/config/env';
 import { AuthService } from './auth.service';
+import { SessionService } from '../session/session.service';
 
 export class AuthController {
   private readonly logger = setupLogger({
@@ -11,7 +12,10 @@ export class AuthController {
     dir: `${config.logging.dir}/controllers/auth`,
   });
 
-  constructor(private readonly authService: AuthService) {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly sessionService: SessionService
+  ) {
     this.logger.info('AuthController initialized');
   }
 
@@ -45,8 +49,14 @@ export class AuthController {
       // Autenticar usuario
       const user = await this.authService.authenticateUser({ email, password });
 
-      // Aquí normalmente generarías un JWT token
-      // const token = generateJWT(user);
+      //Generar un JWT token
+      const sessionData = await this.sessionService.createSession({
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
 
       this.logger.info(`User ${user.id} logged in successfully`);
       
@@ -55,7 +65,11 @@ export class AuthController {
         message: 'Login successful',
         data: {
           user,
-          // token // Agregar cuando implementes JWT
+          sessionId: sessionData.sessionId,
+          accessToken: sessionData.accessToken,
+          refreshToken: sessionData.refreshToken,
+          accessExpiresAt: sessionData.accessExpiresAt,
+          refreshExpiresAt: sessionData.refreshExpiresAt,
         }
       });
 

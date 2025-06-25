@@ -11,7 +11,7 @@ import cookieParser from "cookie-parser";
 import { DatabaseManager } from "./core/config/database-manager";
 import { config } from "./core/config/env";
 import setupLogger from "./shared/utils/logger";
-import apiRoutes from "./routes";
+import {apiRoutes} from "./routes";
 import { initI18n, i18nMiddleware } from './i18n/middleware';
 
 export class Server {
@@ -43,7 +43,7 @@ export class Server {
             this.setupMiddlewares();
 
             // Configurar rutas
-            this.setupRoutes();
+            await this.setupRoutes();
 
             // Configurar manejo de errores
             this.setupErrorHandling();
@@ -197,9 +197,10 @@ export class Server {
         this.logger.info("Apagado completo del servidor");
     }
 
-    private setupRoutes(): void {
+    private async setupRoutes(): Promise<void> {
         // Configurar rutas de la API
-        this.app.use(config.api.prefix, apiRoutes);
+        const router = await apiRoutes();
+        this.app.use(config.api.prefix, router);
 
         // Ruta de health check
         this.app.get(`${config.api.prefix}/health`, (req: Request, res: Response) => {

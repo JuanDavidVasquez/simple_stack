@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import userRoutes from '../api/users/user.routes';
-import authRoutes from '../api/auth/auth.routes';
+import { createAuthRouter } from '../api/auth/auth.routes';
 
-const router = Router();
+export const apiRoutes = async () => {
+  const router = Router();
 
-// Registrar todas las rutas de módulos
-router.use('/users', userRoutes);
-router.use('/auth', authRoutes);
+  const authRouter = await createAuthRouter();
+  router.use('/auth', authRouter);
+  router.use('/users', userRoutes);
 
-
-export default router;
+  return router;
+};
