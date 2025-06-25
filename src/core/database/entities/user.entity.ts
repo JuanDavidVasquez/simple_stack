@@ -8,8 +8,9 @@ import {
     Index,
 } from 'typeorm';
 import { UserRole } from '../../../shared/constants/roles';
+import { USER_TABLE_NAME } from '../../../core/config/user-table.config';
 
-@Entity('users')
+@Entity(USER_TABLE_NAME)
 @Index(['email'], { unique: true })
 @Index(['username'], { unique: true })
 @Index(['lastLoginAt'])
