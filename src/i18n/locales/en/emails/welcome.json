@@ -1,0 +1,18 @@
+{
+  "subject": "Welcome to {{appName}}!",
+  "greeting": "Hello {{firstName}}",
+  "title": "Welcome to our platform!",
+  "message": "We're excited to have you join us.",
+  "verificationTitle": "Verify your account",
+  "verificationMessage": "To complete your registration, please verify your account with the following code:",
+  "verificationCode": "Verification code",
+  "verificationButton": "Verify my account",
+  "alternativeText": "If the button doesn't work, you can copy and paste the following link in your browser:",
+  "questionsTitle": "Have questions?",
+  "questionsMessage": "If you have any questions or need help, don't hesitate to contact us.",
+  "footer": {
+    "thanks": "Thanks,",
+    "team": "The {{appName}} team",
+    "unsubscribe": "If you didn't request this account, you can ignore this email."
+  }
+}

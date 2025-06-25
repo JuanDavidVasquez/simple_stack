@@ -77,9 +77,10 @@ export class UserController {
 
   public createUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
     this.logger.info('Received request to create user', { body: req.body });
-
+   const acceptLanguage = req.headers['accept-language'] || 'en';
     try {
       const userData = req.body;
+      userData.lenguaje = acceptLanguage;
       const user = await this.userService.createUser(userData);
 
       this.logger.info(`User created successfully with ID: ${user.id}`);

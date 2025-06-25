@@ -206,6 +206,9 @@ export const updateUserSchema = z.object({
   }).optional(),
   isActive: z.boolean().optional(),
   isVerified: z.boolean().optional(),
+  lenguaje: z.enum(['en', 'es'], {
+    errorMap: () => ({ message: 'Invalid language. Must be en or es' })
+  }).optional(),
 });
 
 /**

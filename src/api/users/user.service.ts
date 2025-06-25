@@ -8,6 +8,7 @@ import { config } from '../../core/config/env';
 import { User } from '../../core/database/entities/user.entity';
 import { CreateUserData, createUserSchema, getPasswordSchemaByRole, UpdateUserData, updateUserSchema } from '../../shared/schemas/password.schema';
 import BcryptUtil from '../../shared/utils/bcrypt.util';
+import { EmailService } from '../../templates/email.service';
 
 export class UserService {
   private readonly logger = setupLogger({
@@ -17,7 +18,8 @@ export class UserService {
 
   constructor(
     private readonly databaseManager: DatabaseManager,
-    private readonly repository: typeof UserRepository 
+    private readonly repository: typeof UserRepository,
+    private readonly emailService: EmailService
   ) {
     this.logger.info('UserService initialized');
   }
@@ -26,13 +28,13 @@ export class UserService {
     this.logger.info('Fetching all users with params:', params);
     try {
       const result = await this.repository.getAllUsers(params);
-      
+
       // Remover contraseñas de la respuesta por seguridad
       result.data = result.data.map(user => {
         const { password, ...userWithoutPassword } = user;
         return userWithoutPassword as User;
       });
-      
+
       this.logger.info(`Fetched ${result.data.length} users successfully`);
       return result;
     } catch (error) {
@@ -43,20 +45,20 @@ export class UserService {
 
   public async getUserById(id: string): Promise<User> {
     this.logger.info(`Fetching user by id: ${id}`);
-    
+
     try {
       const user = await this.repository.findOne({ where: { id } });
-      
+
       if (!user) {
         throw new ApplicationError('User not found');
       }
 
       // Remover la contraseña de la respuesta
       const { password, ...userResponse } = user;
-      
+
       this.logger.info(`User ${id} fetched successfully`);
       return userResponse as User;
-      
+
     } catch (error) {
       this.logger.error(`Error fetching user ${id}:`, error);
       throw error;
@@ -65,22 +67,22 @@ export class UserService {
 
   public async getUserByEmail(email: string): Promise<User> {
     this.logger.info(`Fetching user by email: ${email}`);
-    
+
     try {
-      const user = await this.repository.findOne({ 
-        where: { email: email.toLowerCase() } 
+      const user = await this.repository.findOne({
+        where: { email: email.toLowerCase() }
       });
-      
+
       if (!user) {
         throw new ApplicationError('User not found');
       }
 
       // Remover la contraseña de la respuesta
       const { password, ...userResponse } = user;
-      
+
       this.logger.info(`User with email ${email} fetched successfully`);
       return userResponse as User;
-      
+
     } catch (error) {
       this.logger.error(`Error fetching user by email ${email}:`, error);
       throw error;
@@ -89,7 +91,7 @@ export class UserService {
 
   public async createUser(userData: CreateUserData): Promise<User> {
     this.logger.info('Creating user with data:', { ...userData, password: '[HIDDEN]' });
-    
+
     try {
       // Validar datos con Zod
       const validatedData = createUserSchema.parse(userData);
@@ -101,20 +103,20 @@ export class UserService {
       }
 
       // Verificar si el email ya existe
-      const existingUser = await this.repository.findOne({ 
-        where: { email: validatedData.email.toLowerCase() } 
+      const existingUser = await this.repository.findOne({
+        where: { email: validatedData.email.toLowerCase() }
       });
-      
+
       if (existingUser) {
         throw new ApplicationError('User with this email already exists');
       }
 
       // Verificar si el username ya existe (si se proporciona)
       if (validatedData.username) {
-        const existingUsername = await this.repository.findOne({ 
-          where: { username: validatedData.username.toLowerCase() } 
+        const existingUsername = await this.repository.findOne({
+          where: { username: validatedData.username.toLowerCase() }
         });
-        
+
         if (existingUsername) {
           throw new ApplicationError('User with this username already exists');
         }
@@ -138,30 +140,59 @@ export class UserService {
       } as Partial<User>;
 
       const user = await this.repository.createUser(userToCreate);
-      
+
       // Remover la contraseña de la respuesta
       const { password, ...userResponse } = user;
-      
+
       this.logger.info(`User created successfully with ID: ${user.id}`);
+
+      // Generar código de verificación
+      const verificationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+      // Guardar el código de verificación en el usuario
+      await this.repository.update(user.id, { verificationCode });
+
+
+      // Email de bienvenida
+      await this.emailService.sendEmail({
+        to: user.email,
+        template: 'welcome',
+        language: userData.lenguaje || 'en',
+        data: {
+          subject: `Welcome to ${config.app.name}!`,
+          companyLogoUrl: `${config.app.baseUrl}/images/logo.png`,
+          companyName: config.app.name,
+          userName: `${user.firstName} ${user.lastName}`,
+          confirmationCode: verificationCode,
+          welcomeTitle: 'Welcome to our platform!',
+          userGreeting: 'Hello',
+          welcomeMessage: 'We are excited to have you join us.',
+          footerNote: 'Thank you for joining us',
+          year: new Date().getFullYear(),
+          allRightsReserved: 'All rights reserved',
+          language: userData.lenguaje,
+        }
+      });
+
       return userResponse as User;
-      
+
     } catch (error) {
       if (error instanceof z.ZodError) {
         const errorMessages = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
         throw new ApplicationError(`Validation failed: ${errorMessages.join(', ')}`);
       }
-      
+
       this.logger.error('Error creating user:', error);
       throw error;
     }
   }
 
   public async updateUser(id: string, updateData: UpdateUserData): Promise<User> {
-    this.logger.info(`Updating user ${id}`, { 
-      ...updateData, 
-      password: updateData.password ? '[HIDDEN]' : undefined 
+    this.logger.info(`Updating user ${id}`, {
+      ...updateData,
+      password: updateData.password ? '[HIDDEN]' : undefined
     });
-    
+
     try {
       // Validar datos con Zod
       const validatedData = updateUserSchema.parse(updateData);
@@ -183,10 +214,10 @@ export class UserService {
 
       // Validar email único (si se está actualizando)
       if (validatedData.email && validatedData.email.toLowerCase() !== existingUser.email.toLowerCase()) {
-        const existingEmail = await this.repository.findOne({ 
-          where: { email: validatedData.email.toLowerCase() } 
+        const existingEmail = await this.repository.findOne({
+          where: { email: validatedData.email.toLowerCase() }
         });
-        
+
         if (existingEmail) {
           throw new ApplicationError('User with this email already exists');
         }
@@ -194,10 +225,10 @@ export class UserService {
 
       // Validar username único (si se está actualizando)
       if (validatedData.username && validatedData.username.toLowerCase() !== existingUser.username?.toLowerCase()) {
-        const existingUsername = await this.repository.findOne({ 
-          where: { username: validatedData.username.toLowerCase() } 
+        const existingUsername = await this.repository.findOne({
+          where: { username: validatedData.username.toLowerCase() }
         });
-        
+
         if (existingUsername) {
           throw new ApplicationError('User with this username already exists');
         }
@@ -218,23 +249,23 @@ export class UserService {
         ...(normalizedData.role && { role: normalizedData.role as any }),
       });
       const updatedUser = await this.repository.findOne({ where: { id } });
-      
+
       if (!updatedUser) {
         throw new ApplicationError('Failed to retrieve updated user');
       }
 
       // Remover la contraseña de la respuesta
       const { password, ...userResponse } = updatedUser;
-      
+
       this.logger.info(`User ${id} updated successfully`);
       return userResponse as User;
-      
+
     } catch (error) {
       if (error instanceof z.ZodError) {
         const errorMessages = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
         throw new ApplicationError(`Validation failed: ${errorMessages.join(', ')}`);
       }
-      
+
       this.logger.error(`Error updating user ${id}:`, error);
       throw error;
     }
@@ -242,19 +273,19 @@ export class UserService {
 
   public async deleteUser(id: string): Promise<void> {
     this.logger.info(`Deleting user ${id}`);
-    
+
     try {
       const user = await this.repository.findOne({ where: { id } });
-      
+
       if (!user) {
         throw new ApplicationError('User not found');
       }
 
       // Soft delete (si tu entidad lo soporta) o hard delete
       await this.repository.delete(id);
-      
+
       this.logger.info(`User ${id} deleted successfully`);
-      
+
     } catch (error) {
       this.logger.error(`Error deleting user ${id}:`, error);
       throw error;
@@ -265,30 +296,30 @@ export class UserService {
     this.logger.info(`Activating user ${id}`);
     try {
       const user = await this.repository.findOne({ where: { id } });
-      
+
       if (!user) {
         throw new ApplicationError('User not found');
       }
 
       // Alternar estado de activación
       const isActive = !user.isActive;
-      await this.repository.update(id, { 
+      await this.repository.update(id, {
         isActive,
         updatedAt: new Date()
       });
-      
+
       const updatedUser = await this.repository.findOne({ where: { id } });
-      
+
       if (!updatedUser) {
         throw new ApplicationError('Failed to retrieve updated user');
       }
 
       // Remover la contraseña de la respuesta
       const { password, ...userResponse } = updatedUser;
-      
+
       this.logger.info(`User ${id} activation status updated to ${isActive}`);
       return userResponse as User;
-      
+
     } catch (error) {
       this.logger.error(`Error activating/deactivating user ${id}:`, error);
       throw error;
@@ -297,10 +328,10 @@ export class UserService {
 
   public async verifyUser(id: string): Promise<User> {
     this.logger.info(`Verifying user ${id}`);
-    
+
     try {
       const user = await this.repository.findOne({ where: { id } });
-      
+
       if (!user) {
         throw new ApplicationError('User not found');
       }
@@ -309,24 +340,24 @@ export class UserService {
         throw new ApplicationError('User is already verified');
       }
 
-      await this.repository.update(id, { 
+      await this.repository.update(id, {
         isVerified: true,
         verificationCode: null, // Limpiar código de verificación
         updatedAt: new Date()
       });
-      
+
       const updatedUser = await this.repository.findOne({ where: { id } });
-      
+
       if (!updatedUser) {
         throw new ApplicationError('Failed to retrieve updated user');
       }
 
       // Remover la contraseña de la respuesta
       const { password, ...userResponse } = updatedUser;
-      
+
       this.logger.info(`User ${id} verified successfully`);
       return userResponse as User;
-      
+
     } catch (error) {
       this.logger.error(`Error verifying user ${id}:`, error);
       throw error;
@@ -335,10 +366,10 @@ export class UserService {
 
   public async updateUserRole(id: string, newRole: string): Promise<User> {
     this.logger.info(`Updating role for user ${id} to ${newRole}`);
-    
+
     try {
       const user = await this.repository.findOne({ where: { id } });
-      
+
       if (!user) {
         throw new ApplicationError('User not found');
       }
@@ -353,23 +384,23 @@ export class UserService {
         throw new ApplicationError(`User already has role: ${newRole}`);
       }
 
-      await this.repository.update(id, { 
+      await this.repository.update(id, {
         role: newRole as any,
         updatedAt: new Date()
       });
-      
+
       const updatedUser = await this.repository.findOne({ where: { id } });
-      
+
       if (!updatedUser) {
         throw new ApplicationError('Failed to retrieve updated user');
       }
 
       // Remover la contraseña de la respuesta
       const { password, ...userResponse } = updatedUser;
-      
+
       this.logger.info(`User ${id} role updated to ${newRole} successfully`);
       return userResponse as User;
-      
+
     } catch (error) {
       this.logger.error(`Error updating role for user ${id}:`, error);
       throw error;
@@ -378,13 +409,13 @@ export class UserService {
 
   public async getUsersCount(): Promise<number> {
     this.logger.info('Getting total users count');
-    
+
     try {
       const count = await this.repository.getUsersCount();
-      
+
       this.logger.info(`Total users count: ${count}`);
       return count;
-      
+
     } catch (error) {
       this.logger.error('Error getting users count:', error);
       throw error;
@@ -393,21 +424,21 @@ export class UserService {
 
   public async getUsersByRole(role: string): Promise<User[]> {
     this.logger.info(`Getting users by role: ${role}`);
-    
+
     try {
-      const users = await this.repository.find({ 
-        where: { role: role as any } 
+      const users = await this.repository.find({
+        where: { role: role as any }
       });
-      
+
       // Remover contraseñas de la respuesta
       const usersWithoutPasswords = users.map(user => {
         const { password, ...userWithoutPassword } = user;
         return userWithoutPassword as User;
       });
-      
+
       this.logger.info(`Found ${users.length} users with role ${role}`);
       return usersWithoutPasswords;
-      
+
     } catch (error) {
       this.logger.error(`Error getting users by role ${role}:`, error);
       throw error;
@@ -416,29 +447,29 @@ export class UserService {
 
   public async softDeleteUser(id: string): Promise<User> {
     this.logger.info(`Soft deleting user ${id}`);
-    
+
     try {
       const user = await this.repository.findOne({ where: { id } });
-      
+
       if (!user) {
         throw new ApplicationError('User not found');
       }
 
       // Marcar como eliminado (soft delete)
       await this.repository.softDeleteUser(id);
-      
+
       const updatedUser = await this.repository.findOne({ where: { id } });
-      
+
       if (!updatedUser) {
         throw new ApplicationError('Failed to retrieve updated user');
       }
 
       // Remover la contraseña de la respuesta
       const { password, ...userResponse } = updatedUser;
-      
+
       this.logger.info(`User ${id} soft deleted successfully`);
       return userResponse as User;
-      
+
     } catch (error) {
       this.logger.error(`Error soft deleting user ${id}:`, error);
       throw error;
