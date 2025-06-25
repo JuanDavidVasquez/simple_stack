@@ -8,8 +8,5 @@ const router = Router();
 router.use('/users', userRoutes);
 router.use('/auth', authRoutes);
 
-// También puedes agregar otras rutas aquí en el futuro:
-// router.use('/auth', authRoutes);
-// router.use('/roles', roleRoutes);
 
 export default router;

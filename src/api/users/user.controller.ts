@@ -19,7 +19,6 @@ export class UserController {
 
   public getAllUsers = async (req: LocalizedRequest, res: Response): Promise<void> => {
     this.logger.info('Received request to get all users', { body: req.body });
-
     try {
       const {
         page = 1,
@@ -39,13 +38,25 @@ export class UserController {
 
       const result = await this.userService.getAllUsers(params);
 
+      if (!result || result.data.length === 0) {
+        this.logger.warn('No users found');
+        
+        // ✅ Usar clave de error correcta para "no encontrado"
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.general.not_found',
+          404
+        );
+        return;
+      }
+
       this.logger.info(`Successfully fetched ${result.data.length} users`);
       
-      // ✅ Respuesta localizada con interpolación
       ResponseUtil.success(
         req,
         res,
-        TRANSLATION_KEYS.RESPONSES.USER.LIST_RETRIEVED,
+        'responses.user.list_retrieved',
         result,
         200,
         { count: result.data.length }
@@ -54,11 +65,11 @@ export class UserController {
     } catch (error) {
       this.logger.error('Error fetching users:', error);
       
-      // ✅ Error localizado
+      // ✅ Usar clave de error correcta
       ResponseUtil.error(
         req,
         res,
-        TRANSLATION_KEYS.ERRORS.GENERAL.INTERNAL_SERVER,
+        'errors.general.internal_server',
         500
       );
     }
@@ -69,16 +80,14 @@ export class UserController {
 
     try {
       const userData = req.body;
-      console.log('Creating user with data CONTROLLER:', userData);
       const user = await this.userService.createUser(userData);
 
       this.logger.info(`User created successfully with ID: ${user.id}`);
       
-      // ✅ Respuesta localizada de creación exitosa
       ResponseUtil.success(
         req,
         res,
-        TRANSLATION_KEYS.RESPONSES.USER.CREATED,
+        'responses.user.created',
         user,
         201
       );
@@ -86,13 +95,12 @@ export class UserController {
     } catch (error) {
       this.logger.error('Error creating user:', error);
       
-      // ✅ Manejo de errores específicos con mensajes localizados
       if (error instanceof Error) {
         if (error.message.includes('email already exists')) {
           ResponseUtil.error(
             req,
             res,
-            TRANSLATION_KEYS.ERRORS.USER.EMAIL_EXISTS,
+            'errors.user.email_exists',
             400
           );
           return;
@@ -102,7 +110,7 @@ export class UserController {
           ResponseUtil.error(
             req,
             res,
-            TRANSLATION_KEYS.ERRORS.USER.USERNAME_EXISTS,
+            'errors.user.username_exists',
             400
           );
           return;
@@ -112,7 +120,7 @@ export class UserController {
           ResponseUtil.error(
             req,
             res,
-            TRANSLATION_KEYS.ERRORS.GENERAL.VALIDATION_FAILED,
+            'errors.general.validation_failed',
             400
           );
           return;
@@ -123,7 +131,7 @@ export class UserController {
       ResponseUtil.error(
         req,
         res,
-        TRANSLATION_KEYS.ERRORS.GENERAL.INTERNAL_SERVER,
+        'errors.general.internal_server',
         500
       );
     }
@@ -139,23 +147,21 @@ export class UserController {
       if (!user) {
         this.logger.warn(`User with ID ${userId} not found`);
         
-        // ✅ Error localizado de usuario no encontrado
         ResponseUtil.error(
           req,
           res,
-          TRANSLATION_KEYS.ERRORS.USER.NOT_FOUND,
+          'errors.user.not_found',
           404
         );
         return;
       }
 
       this.logger.info(`User with ID ${userId} retrieved successfully`);
-      
-      // ✅ Respuesta localizada exitosa
+
       ResponseUtil.success(
         req,
         res,
-        TRANSLATION_KEYS.RESPONSES.USER.RETRIEVED,
+        'responses.user.retrieved',
         user,
         200
       );
@@ -166,7 +172,7 @@ export class UserController {
       ResponseUtil.error(
         req,
         res,
-        TRANSLATION_KEYS.ERRORS.GENERAL.INTERNAL_SERVER,
+        'errors.general.internal_server',
         500
       );
     }
@@ -186,19 +192,18 @@ export class UserController {
         ResponseUtil.error(
           req,
           res,
-          TRANSLATION_KEYS.ERRORS.USER.NOT_FOUND,
+          'errors.user.not_found',
           404
         );
         return;
       }
 
       this.logger.info(`User with ID ${userId} updated successfully`);
-      
-      // ✅ Respuesta de actualización exitosa
+
       ResponseUtil.success(
         req,
         res,
-        TRANSLATION_KEYS.RESPONSES.USER.UPDATED,
+        'responses.user.updated',
         updatedUser,
         200
       );
@@ -212,7 +217,7 @@ export class UserController {
           ResponseUtil.error(
             req,
             res,
-            TRANSLATION_KEYS.ERRORS.USER.EMAIL_EXISTS,
+            'errors.user.email_exists',
             400
           );
           return;
@@ -222,7 +227,7 @@ export class UserController {
           ResponseUtil.error(
             req,
             res,
-            TRANSLATION_KEYS.ERRORS.GENERAL.VALIDATION_FAILED,
+            'errors.general.validation_failed',
             400
           );
           return;
@@ -232,7 +237,7 @@ export class UserController {
       ResponseUtil.error(
         req,
         res,
-        TRANSLATION_KEYS.ERRORS.GENERAL.INTERNAL_SERVER,
+        'errors.general.internal_server',
         500
       );
     }
@@ -246,12 +251,11 @@ export class UserController {
       await this.userService.deleteUser(userId);
 
       this.logger.info(`User with ID ${userId} deleted successfully`);
-      
-      // ✅ Respuesta de eliminación exitosa (204 No Content con mensaje)
+
       ResponseUtil.success(
         req,
         res,
-        TRANSLATION_KEYS.RESPONSES.USER.DELETED,
+        'responses.user.deleted',
         null,
         204
       );
@@ -263,7 +267,7 @@ export class UserController {
         ResponseUtil.error(
           req,
           res,
-          TRANSLATION_KEYS.ERRORS.USER.NOT_FOUND,
+          'errors.user.not_found',
           404
         );
         return;
@@ -272,7 +276,7 @@ export class UserController {
       ResponseUtil.error(
         req,
         res,
-        TRANSLATION_KEYS.ERRORS.GENERAL.INTERNAL_SERVER,
+        'errors.general.internal_server',
         500
       );
     }
@@ -291,7 +295,7 @@ export class UserController {
         ResponseUtil.error(
           req,
           res,
-          TRANSLATION_KEYS.ERRORS.USER.NOT_FOUND,
+          'errors.user.not_found',
           404
         );
         return;
@@ -302,7 +306,7 @@ export class UserController {
       ResponseUtil.success(
         req,
         res,
-        TRANSLATION_KEYS.RESPONSES.USER.DELETED,
+        'responses.user.deleted',
         deletedUser,
         200
       );
@@ -313,7 +317,7 @@ export class UserController {
       ResponseUtil.error(
         req,
         res,
-        TRANSLATION_KEYS.ERRORS.GENERAL.INTERNAL_SERVER,
+        'errors.general.internal_server',
         500
       );
     }
@@ -332,7 +336,7 @@ export class UserController {
         ResponseUtil.error(
           req,
           res,
-          TRANSLATION_KEYS.ERRORS.USER.NOT_FOUND,
+          'errors.user.not_found',
           404
         );
         return;
@@ -343,7 +347,7 @@ export class UserController {
       ResponseUtil.success(
         req,
         res,
-        TRANSLATION_KEYS.RESPONSES.USER.RETRIEVED,
+        'responses.user.retrieved',
         user,
         200
       );
@@ -354,7 +358,7 @@ export class UserController {
       ResponseUtil.error(
         req,
         res,
-        TRANSLATION_KEYS.ERRORS.GENERAL.INTERNAL_SERVER,
+        'errors.general.internal_server',
         500
       );
     }
@@ -372,8 +376,8 @@ export class UserController {
         ResponseUtil.error(
           req,
           res,
-          TRANSLATION_KEYS.ERRORS.USER.NOT_FOUND,
-          404
+          'errors.user.not_found',
+          404,
         );
         return;
       }
@@ -382,8 +386,8 @@ export class UserController {
       
       // ✅ Mensaje dinámico según el estado
       const messageKey = updateStatus.isActive 
-        ? TRANSLATION_KEYS.RESPONSES.USER.ACTIVATED 
-        : TRANSLATION_KEYS.RESPONSES.USER.DEACTIVATED;
+        ? 'responses.user.activated'
+        : 'responses.user.deactivated';
       
       ResponseUtil.success(
         req,
@@ -399,7 +403,7 @@ export class UserController {
       ResponseUtil.error(
         req,
         res,
-        TRANSLATION_KEYS.ERRORS.GENERAL.INTERNAL_SERVER,
+        'errors.general.internal_server',
         500
       );
     }
@@ -418,7 +422,7 @@ export class UserController {
         ResponseUtil.error(
           req,
           res,
-          TRANSLATION_KEYS.ERRORS.USER.NOT_FOUND,
+          'errors.user.not_found',
           404
         );
         return;
@@ -426,11 +430,10 @@ export class UserController {
 
       this.logger.info(`User with ID ${userId} verified successfully`);
       
-      // ✅ Mensaje de verificación exitosa
       ResponseUtil.success(
         req,
         res,
-        TRANSLATION_KEYS.RESPONSES.USER.VERIFIED,
+        'responses.user.verified',
         verifiedUser,
         200
       );
@@ -442,7 +445,7 @@ export class UserController {
         ResponseUtil.error(
           req,
           res,
-          TRANSLATION_KEYS.ERRORS.USER.ALREADY_VERIFIED,
+          'errors.user.already_verified',
           400
         );
         return;
@@ -451,7 +454,7 @@ export class UserController {
       ResponseUtil.error(
         req,
         res,
-        TRANSLATION_KEYS.ERRORS.GENERAL.INTERNAL_SERVER,
+        'errors.general.internal_server',
         500
       );
     }
@@ -472,7 +475,7 @@ export class UserController {
         ResponseUtil.error(
           req,
           res,
-          TRANSLATION_KEYS.ERRORS.USER.NOT_FOUND,
+          'errors.user.not_found',
           404
         );
         return;
@@ -480,11 +483,10 @@ export class UserController {
 
       this.logger.info(`User with ID ${userId} role updated successfully`);
       
-      // ✅ Mensaje de rol actualizado con interpolación
       ResponseUtil.success(
         req,
         res,
-        TRANSLATION_KEYS.RESPONSES.USER.ROLE_UPDATED,
+        'responses.user.role_updated',
         updatedUser,
         200,
         { role } // Interpolación para mostrar el nuevo rol
@@ -497,7 +499,7 @@ export class UserController {
         ResponseUtil.error(
           req,
           res,
-          TRANSLATION_KEYS.ERRORS.VALIDATION.INVALID_ROLE,
+          'validation.user.role_invalid',
           400
         );
         return;
@@ -506,7 +508,7 @@ export class UserController {
       ResponseUtil.error(
         req,
         res,
-        TRANSLATION_KEYS.ERRORS.GENERAL.INTERNAL_SERVER,
+        'errors.general.internal_server',
         500
       );
     }
@@ -519,11 +521,10 @@ export class UserController {
       const count = await this.userService.getUsersCount();
       this.logger.info(`Total users count: ${count}`);
       
-      // ✅ Respuesta con conteo
       ResponseUtil.success(
         req,
         res,
-        TRANSLATION_KEYS.RESPONSES.GENERAL.OPERATION_SUCCESSFUL,
+        'responses.general.operation_successful',
         { count },
         200
       );
@@ -534,7 +535,7 @@ export class UserController {
       ResponseUtil.error(
         req,
         res,
-        TRANSLATION_KEYS.ERRORS.GENERAL.INTERNAL_SERVER,
+        'errors.general.internal_server',
         500
       );
     }
@@ -550,11 +551,10 @@ export class UserController {
       if (!users || users.length === 0) {
         this.logger.warn(`No users found with role ${role}`);
         
-        // ✅ Mensaje específico para "no encontrado" pero diferenciado
         ResponseUtil.error(
           req,
           res,
-          TRANSLATION_KEYS.ERRORS.GENERAL.NOT_FOUND,
+          'errors.general.not_found',
           404
         );
         return;
@@ -562,11 +562,10 @@ export class UserController {
 
       this.logger.info(`Users with role ${role} retrieved successfully`);
       
-      // ✅ Respuesta exitosa con lista de usuarios
       ResponseUtil.success(
         req,
         res,
-        TRANSLATION_KEYS.RESPONSES.USER.LIST_RETRIEVED,
+        'responses.user.list_retrieved',
         users,
         200,
         { count: users.length }
@@ -578,7 +577,7 @@ export class UserController {
       ResponseUtil.error(
         req,
         res,
-        TRANSLATION_KEYS.ERRORS.GENERAL.INTERNAL_SERVER,
+        'errors.general.internal_server',
         500
       );
     }

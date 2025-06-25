@@ -27,7 +27,6 @@ class I18nService {
           break;
         
         case 'pt':
-          // Por ahora usa las traducciones en inglés como fallback
           const { enTranslations: ptFallback } = await import('./locales/en/index.js');
           translations = ptFallback;
           console.warn('Portuguese translations not implemented yet, using English fallback');

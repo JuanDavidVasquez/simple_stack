@@ -11,8 +11,8 @@ export const esUserTranslations: UserTranslations = {
       verified: 'Email del usuario verificado exitosamente',
       role_updated: ({ role } = {}) => `Rol del usuario actualizado a ${role} exitosamente`,
       retrieved: 'Usuario obtenido exitosamente',
-      list_retrieved: ({ count } = {}) => `${count} usuarios obtenidos exitosamente`,
-    },
+      list_retrieved: ({ count } = {}) => `${count} usuarios obtenidos exitosamente`
+    }
   },
   errors: {
     user: {
