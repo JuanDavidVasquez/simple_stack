@@ -159,20 +159,17 @@ export class UserService {
         template: 'welcome',
         language: userData.lenguaje || 'en',
         data: {
-          subject: `Welcome to ${config.app.name}!`,
+          appName: config.app.name,
+          userName: `${user.firstName} ${user.lastName}`,
+          firstName: user.firstName,
+          confirmationCode: verificationCode,
+          confirmationUrl: `${config.app.frontendUrl}/verify/${verificationCode}`,
+          year: new Date().getFullYear(),
           companyLogoUrl: `${config.app.baseUrl}/images/logo.png`,
           companyName: config.app.name,
-          userName: `${user.firstName} ${user.lastName}`,
-          confirmationCode: verificationCode,
-          welcomeTitle: 'Welcome to our platform!',
-          userGreeting: 'Hello',
-          welcomeMessage: 'We are excited to have you join us.',
-          footerNote: 'Thank you for joining us',
-          year: new Date().getFullYear(),
-          allRightsReserved: 'All rights reserved',
-          language: userData.lenguaje,
         }
       });
+
 
       return userResponse as User;
 

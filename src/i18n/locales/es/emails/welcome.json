@@ -1,6 +1,6 @@
 {
-  "subject": "¡Bienvenido a {{appName}}!",
-  "greeting": "Hola {{firstName}}",
+  "subject": "¡Bienvenido a !",
+  "greeting": "Hola",
   "title": "¡Bienvenido a nuestra plataforma!",
   "message": "Estamos muy contentos de que te hayas unido a nosotros.",
   "verificationTitle": "Verifica tu cuenta",
@@ -12,7 +12,8 @@
   "questionsMessage": "Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos.",
   "footer": {
     "thanks": "Gracias,",
-    "team": "El equipo de {{appName}}",
-    "unsubscribe": "Si no solicitaste esta cuenta, puedes ignorar este correo."
+    "team": "El equipo de",
+    "unsubscribe": "Si no solicitaste esta cuenta, puedes ignorar este correo.",
+    "footerNote": "Este es un mensaje automatizado, por favor no respondas."
   }
 }

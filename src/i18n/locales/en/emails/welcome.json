@@ -1,6 +1,6 @@
 {
-  "subject": "Welcome to {{appName}}!",
-  "greeting": "Hello {{firstName}}",
+  "subject": "Welcome to !",
+  "greeting": "Hello ",
   "title": "Welcome to our platform!",
   "message": "We're excited to have you join us.",
   "verificationTitle": "Verify your account",
@@ -12,7 +12,8 @@
   "questionsMessage": "If you have any questions or need help, don't hesitate to contact us.",
   "footer": {
     "thanks": "Thanks,",
-    "team": "The {{appName}} team",
-    "unsubscribe": "If you didn't request this account, you can ignore this email."
+    "team": "The One Lesson Per Day team",
+    "unsubscribe": "If you didn't request this account, you can ignore this email.",
+    "footerNote": "This is an automated message, please do not reply."
   }
 }
