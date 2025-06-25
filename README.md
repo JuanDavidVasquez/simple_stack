@@ -128,6 +128,13 @@ Backend robusto y escalable construido con TypeScript, Express, TypeORM y arquit
 │   |   └── 📁 pages/
 │   |       └── welcome.hbs
 │   |       └── reset-password.hbs
+|   ├── 📁 i18n/
+│   |    ├── 📁 en/
+│   |    │   └── emails/
+│   |    │       └── welcome.json
+│   |    └── 📁 es/
+│   |        └── emails/
+│   |            └── welcome.json
 │   │
 │   └── index.ts                    # Entry Point
 │
@@ -148,13 +155,6 @@ Backend robusto y escalable construido con TypeScript, Express, TypeORM y arquit
 │   ├── 📁 unit/
 │   ├── 📁 integration/
 │   └── 📁 e2e/
-├── 📁 i18n/
-│    ├── 📁 en/
-│    │   └── emails/
-│    │       └── welcome.json
-│    └── 📁 es/
-│        └── emails/
-│            └── welcome.json
 ├── .dockerignore
 ├── .eslintrc.js
 ├── .gitignore
