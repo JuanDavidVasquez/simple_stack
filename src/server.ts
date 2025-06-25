@@ -12,6 +12,7 @@ import { DatabaseManager } from "./core/config/database-manager";
 import { config } from "./core/config/env";
 import setupLogger from "./shared/utils/logger";
 import apiRoutes from "./routes";
+import { initI18n, i18nMiddleware } from './i18n/middleware';
 
 export class Server {
     private app: Application;
@@ -23,6 +24,7 @@ export class Server {
         this.app = express();
         this.logger = setupLogger(config.logging);
         this.databaseManager = DatabaseManager.getInstance();
+        
     }
 
     public async initialize(): Promise<void> {
@@ -33,6 +35,9 @@ export class Server {
             this.logger.info("Inicializando la conexión a la base de datos...");
             await this.databaseManager.initialize();
             this.logger.info("Conexión a la base de datos establecida correctamente");
+
+            await initI18n();
+            this.app.use(i18nMiddleware); 
 
             // Configurar middlewares básicos
             this.setupMiddlewares();
