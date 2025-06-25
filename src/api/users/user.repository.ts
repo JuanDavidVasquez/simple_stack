@@ -49,10 +49,59 @@ export const UserRepository = AppDataSource.getRepository(User).extend({
       hasPreviousPage: page > 1,
     };
   },
-  
+
   async createUser(userData: Partial<User>): Promise<User> {
     const user = this.create(userData);
     console.log('Creating user with data:', userData);
     return await this.save(user);
-  }
+  },
+
+  async getUserById(id: string): Promise<User | null> {
+    const user = await this.findOne({ where: { id } });
+    if (!user) {
+      console.warn(`User with ID ${id} not found`);
+      return null;
+    }
+    return user;
+  },
+
+  async updateUser(id: string, userData: Partial<User>): Promise<User | null> {
+    const user = await this.findOne({ where: { id } });
+    if (!user) {
+      console.warn(`User with ID ${id} not found for update`);
+      return null;
+    }
+    Object.assign(user, userData);
+    return await this.save(user);
+  },
+
+  async deleteUser(id: string): Promise<void> {
+    const user = await this.findOne({ where: { id } });
+    if (!user) {
+      console.warn(`User with ID ${id} not found for deletion`);
+      return;
+    }
+    await this.remove(user);
+  },
+  async findByEmail(email: string): Promise<User | null> {
+    const user = await this.findOne({ where: { email } });
+    if (!user) {
+      console.warn(`User with email ${email} not found`);
+      return null;
+    }
+    return user;
+  },
+  async softDeleteUser(id: string): Promise<User | null> {
+    const user = await this.findOne({ where: { id } });
+    if (!user) {
+      console.warn(`User with ID ${id} not found for soft deletion`);
+      return null;
+    }
+    await this.softRemove(user);
+    return user;
+  },
+  async getUsersCount(): Promise<number> {
+    return await this.count({ withDeleted: true });
+  },
+
 });

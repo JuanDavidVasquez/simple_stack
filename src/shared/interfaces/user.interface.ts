@@ -28,6 +28,8 @@ export interface User {
   isVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
+  deletedAt?: Date;
+  isDeleted?: boolean;
   lastLoginAt?: Date;
   language?: 'en' | 'es';
 }
@@ -43,4 +45,7 @@ export interface UpdateUserDto {
   isVerified?: boolean;
   language?: 'en' | 'es';
   lastLoginAt?: Date;
+  isDeleted?: boolean;
+  deletedAt?: Date;
+  updatedAt?: Date;
 }

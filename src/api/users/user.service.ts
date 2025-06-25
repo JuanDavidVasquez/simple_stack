@@ -261,9 +261,8 @@ export class UserService {
     }
   }
 
-  public async activateUser(id: string): Promise<User> {
+  public async activateUserOrDeactivateUser(id: string): Promise<User> {
     this.logger.info(`Activating user ${id}`);
-    
     try {
       const user = await this.repository.findOne({ where: { id } });
       
@@ -271,12 +270,10 @@ export class UserService {
         throw new ApplicationError('User not found');
       }
 
-      if (user.isActive) {
-        throw new ApplicationError('User is already active');
-      }
-
+      // Alternar estado de activación
+      const isActive = !user.isActive;
       await this.repository.update(id, { 
-        isActive: true,
+        isActive,
         updatedAt: new Date()
       });
       
@@ -289,48 +286,11 @@ export class UserService {
       // Remover la contraseña de la respuesta
       const { password, ...userResponse } = updatedUser;
       
-      this.logger.info(`User ${id} activated successfully`);
+      this.logger.info(`User ${id} activation status updated to ${isActive}`);
       return userResponse as User;
       
     } catch (error) {
-      this.logger.error(`Error activating user ${id}:`, error);
-      throw error;
-    }
-  }
-
-  public async deactivateUser(id: string): Promise<User> {
-    this.logger.info(`Deactivating user ${id}`);
-    
-    try {
-      const user = await this.repository.findOne({ where: { id } });
-      
-      if (!user) {
-        throw new ApplicationError('User not found');
-      }
-
-      if (!user.isActive) {
-        throw new ApplicationError('User is already inactive');
-      }
-
-      await this.repository.update(id, { 
-        isActive: false,
-        updatedAt: new Date()
-      });
-      
-      const updatedUser = await this.repository.findOne({ where: { id } });
-      
-      if (!updatedUser) {
-        throw new ApplicationError('Failed to retrieve updated user');
-      }
-
-      // Remover la contraseña de la respuesta
-      const { password, ...userResponse } = updatedUser;
-      
-      this.logger.info(`User ${id} deactivated successfully`);
-      return userResponse as User;
-      
-    } catch (error) {
-      this.logger.error(`Error deactivating user ${id}:`, error);
+      this.logger.error(`Error activating/deactivating user ${id}:`, error);
       throw error;
     }
   }
@@ -420,7 +380,7 @@ export class UserService {
     this.logger.info('Getting total users count');
     
     try {
-      const count = await this.repository.count();
+      const count = await this.repository.getUsersCount();
       
       this.logger.info(`Total users count: ${count}`);
       return count;
@@ -450,6 +410,37 @@ export class UserService {
       
     } catch (error) {
       this.logger.error(`Error getting users by role ${role}:`, error);
+      throw error;
+    }
+  }
+
+  public async softDeleteUser(id: string): Promise<User> {
+    this.logger.info(`Soft deleting user ${id}`);
+    
+    try {
+      const user = await this.repository.findOne({ where: { id } });
+      
+      if (!user) {
+        throw new ApplicationError('User not found');
+      }
+
+      // Marcar como eliminado (soft delete)
+      await this.repository.softDeleteUser(id);
+      
+      const updatedUser = await this.repository.findOne({ where: { id } });
+      
+      if (!updatedUser) {
+        throw new ApplicationError('Failed to retrieve updated user');
+      }
+
+      // Remover la contraseña de la respuesta
+      const { password, ...userResponse } = updatedUser;
+      
+      this.logger.info(`User ${id} soft deleted successfully`);
+      return userResponse as User;
+      
+    } catch (error) {
+      this.logger.error(`Error soft deleting user ${id}:`, error);
       throw error;
     }
   }
