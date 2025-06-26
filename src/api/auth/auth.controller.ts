@@ -422,7 +422,7 @@ export class AuthController {
     this.logger.info('Received password reset request', { 
       email: req.body.email 
     });
-
+    const acceptLanguage = req.headers['accept-language'] || 'en';
     try {
       const { email } = req.body;
 
@@ -434,7 +434,7 @@ export class AuthController {
         return;
       }
 
-      const result = await this.authService.resetPassword(email);
+      const result = await this.authService.resetPassword(email,acceptLanguage);
 
       // Si el reset fue exitoso, invalidar todas las sesiones del usuario
       // Esto requeriría obtener el userId desde el email

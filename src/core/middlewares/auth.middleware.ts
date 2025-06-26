@@ -26,7 +26,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     try {
       const decoded = JwtUtil.verifyAccessToken(token);
       
-      // NUEVA VALIDACIÓN: Verificar sesión en base de datos
+      //Verificar sesión en base de datos
       const sessionRepository = AppDataSource.getRepository(UserSession);
       const session = await sessionRepository.findOne({
         where: {
@@ -147,9 +147,12 @@ export const adminOrOwnerMiddleware = (req: Request, res: Response, next: NextFu
       return;
     }
 
-    const targetUserId = req.params.userId;
+    const targetUserId = req.params.id;
     const isAdmin = req.user.role === 'admin';
     const isOwner = req.user.userId === targetUserId;
+
+    console.log(`Usuario autenticado: ${req.user.userId}, Rol: ${req.user.role}`);
+    console.log(`ID del usuario objetivo: ${targetUserId}`);
 
     if (!isAdmin && !isOwner) {
       res.status(403).json({

@@ -7,6 +7,7 @@ import { ApplicationError } from '../../shared/errors/application.error';
 import { ChangePasswordData, changePasswordSchema, getPasswordSchemaByRole, LoginData, loginSchema } from '../../shared/schemas/password.schema';
 import BcryptUtil from '../../shared/utils/bcrypt.util';
 import setupLogger from '../../shared/utils/logger';
+import { EmailService, SupportedLanguage } from '../../templates/email.service';
 
 
 export class AuthService {
@@ -17,7 +18,8 @@ export class AuthService {
 
   constructor(
     private readonly databaseManager: DatabaseManager,
-    private readonly userRepository: typeof UserRepository 
+    private readonly userRepository: typeof UserRepository,
+     private readonly emailService: EmailService
   ) {
     this.logger.info('AuthService initialized');
   }
@@ -156,7 +158,7 @@ export class AuthService {
   /**
    * Genera y establece una nueva contraseña temporal para un usuario
    */
-  public async resetPassword(email: string): Promise<{ success: boolean; temporaryPassword?: string }> {
+  public async resetPassword(email: string, acceptLanguage:string): Promise<{ success: boolean; temporaryPassword?: string }> {
     this.logger.info(`Resetting password for user with email: ${email}`);
     
     try {
@@ -193,8 +195,20 @@ export class AuthService {
 
       this.logger.info(`Password reset successfully for user ${user.id}`);
       
-      // En un caso real, aquí enviarías un email con la contraseña temporal
-      // Por ahora, la retornamos (solo para desarrollo)
+      
+      // Email temporalmente la nueva contraseña al usuario
+      await this.emailService.sendEmail({
+          to: user.email,
+          template: 'password-reset',
+          language: (['en', 'es'].includes(acceptLanguage) ? acceptLanguage : 'en') as SupportedLanguage,
+          data:{
+            firstName: user.firstName,
+            temporaryPassword: temporaryPassword,
+            resetToken: resetToken,
+            resetExpiry: resetExpiry.toISOString()
+          }
+      })
+
       return {
         success: true,
         ...(config.app.env === 'development' && { temporaryPassword })
