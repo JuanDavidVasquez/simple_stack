@@ -1,4 +1,99 @@
 import { Request, Response, NextFunction } from 'express';
+import JwtUtil from '../../shared/utils/jwt.util';
+import { UserRole } from '../../shared/constants/roles';
+import { UserSession } from '../database/entities/user-session.entity';
+import { AppDataSource } from '../database/config/database.config';
+
+
+/**
+ * Middleware de autenticación principal
+ * Verifica el token Bearer y agrega información del usuario a req.user
+ */
+export const authMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+   
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      res.status(401).json({
+        success: false,
+        message: 'Token de acceso requerido'
+      });
+      return;
+    }
+
+    const token = authHeader.substring(7);
+    
+    try {
+      const decoded = JwtUtil.verifyAccessToken(token);
+      
+      // NUEVA VALIDACIÓN: Verificar sesión en base de datos
+      const sessionRepository = AppDataSource.getRepository(UserSession);
+      const session = await sessionRepository.findOne({
+        where: {
+          sessionId: decoded.sessionId,
+          userId: decoded.userId,
+          isActive: true
+        },
+        relations: ['user']
+      });
+
+      if (!session) {
+        res.status(401).json({
+          success: false,
+          message: 'Sesión no válida o inactiva'
+        });
+        return;
+      }
+
+      // Verificar si la sesión expiró
+      if (session.expiresAt < new Date()) {
+        await sessionRepository.update(session.id, {
+          isActive: false,
+          revokedAt: new Date(),
+          revokedReason: 'expired'
+        });
+        
+        res.status(401).json({
+          success: false,
+          message: 'Sesión expirada'
+        });
+        return;
+      }
+
+      // Verificar si el usuario está activo
+      if (!session.user.isActive) {
+        res.status(401).json({
+          success: false,
+          message: 'Usuario inactivo'
+        });
+        return;
+      }
+
+      req.user = {
+        userId: decoded.userId,
+        role: session.user.role as UserRole,
+        sessionId: decoded.sessionId
+      };
+      
+      req.sessionId = decoded.sessionId;
+      next();
+      
+    } catch (jwtError) {
+      res.status(401).json({
+        success: false,
+        message: 'Token inválido o expirado'
+      });
+      return;
+    }
+  } catch (error) {
+    console.error('Error en authMiddleware:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+    return;
+  }
+};
 
 /**
  * Middleware de autorización administrativa

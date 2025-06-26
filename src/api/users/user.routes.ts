@@ -1,10 +1,16 @@
 import { Router } from 'express';
 import { createUserController } from '../../factories/user.factory';
+import { authMiddleware } from '../../core/middlewares/auth.middleware';
+import { authorizeRoles } from '../../core/middlewares/authorizeRoles.middleware';
+import { UserRole } from '../../shared/constants/roles';
 
 const router = Router();
 const userController = createUserController();
 
-router.post('/', userController.getAllUsers);
+router.post('/', 
+    authMiddleware, 
+    authorizeRoles(UserRole.ADMIN), 
+    userController.getAllUsers);
 router.post('/create', userController.createUser);
 
 // ✅ Rutas específicas primero
