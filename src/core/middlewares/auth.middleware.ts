@@ -12,7 +12,7 @@ import { UserSession } from '../database/entities/entities/user-session.entity';
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
-   
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       res.status(401).json({
         success: false,
@@ -22,10 +22,9 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     }
 
     const token = authHeader.substring(7);
-    
+
     try {
       const decoded = JwtUtil.verifyAccessToken(token);
-      
       //Verificar sesión en base de datos
       const sessionRepository = AppDataSource.getRepository(UserSession);
       const session = await sessionRepository.findOne({
@@ -34,9 +33,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
           userId: decoded.userId,
           isActive: true
         },
-        relations: ['user']
       });
-
       if (!session) {
         res.status(401).json({
           success: false,
@@ -52,14 +49,15 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
           revokedAt: new Date(),
           revokedReason: 'expired'
         });
-        
+
         res.status(401).json({
           success: false,
           message: 'Sesión expirada'
         });
         return;
       }
-
+      console.log('Sesión válida encontrada:');
+      console.log(session)
       // Verificar si el usuario está activo
       if (!session.isActive) {
         res.status(401).json({
@@ -68,16 +66,14 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         });
         return;
       }
-
       req.user = {
         userId: decoded.userId,
         role: session.userRole as UserRole,
         sessionId: decoded.sessionId
       };
-      
       req.sessionId = decoded.sessionId;
       next();
-      
+
     } catch (jwtError) {
       res.status(401).json({
         success: false,
