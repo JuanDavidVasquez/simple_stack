@@ -1,24 +1,17 @@
 import {
     Entity,
     Column,
-    PrimaryGeneratedColumn,
-    CreateDateColumn,
-    UpdateDateColumn,
-    DeleteDateColumn,
     Index,
 } from 'typeorm';
 import { UserRole } from '../../../shared/constants/roles';
-import { USER_TABLE_NAME } from '../../../core/config/user-table.config';
 import { BaseUser } from './base-user.entity';
 
-@Entity(USER_TABLE_NAME)
+@Entity('users')
 @Index(['email'], { unique: true })
 @Index(['username'], { unique: true })
 @Index(['lastLoginAt'])
 @Index(['lockedUntil'])
 export class User extends BaseUser {
-
-
     @Column({ type: 'varchar', length: 100, nullable: true })
     username?: string | null;
 
@@ -74,4 +67,9 @@ export class User extends BaseUser {
 
     @Column({ type: 'datetime', nullable: true })
     resetPasswordExpires?: Date | null;
+
+    // ✅ Método helper específico para User
+    isLocked(): boolean {
+        return this.lockedUntil ? this.lockedUntil > new Date() : false;
+    }
 }
