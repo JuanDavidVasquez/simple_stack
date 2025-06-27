@@ -2,6 +2,7 @@
 import { DataSource } from "typeorm";
 import { config } from "../../config/env";
 import setupLogger from "../../../shared/utils/logger";
+import * as Entities from '../entities';
 
 const logger = setupLogger({
   ...config.logging,
@@ -26,9 +27,7 @@ export const AppDataSource = new DataSource({
   timezone: config.database.timezone,
   
   // Rutas de entidades, migraciones y subscribers
-  entities: [
-    __dirname + "/../entities/**/*.entity{.ts,.js}",
-  ],
+  entities: Object.values(Entities),
   migrations: [
     __dirname + "/../migrations/**/*{.ts,.js}",
   ],

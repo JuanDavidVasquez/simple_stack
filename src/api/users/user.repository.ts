@@ -1,6 +1,6 @@
 import { PaginatedRequest, PaginatedResponse } from '../../shared/interfaces/pagination.interface';
-import { User } from '../../core/database/entities/user.entity';
 import { AppDataSource } from '../../core/database/config/database.config';
+import { User } from '../../core/database/entities/entities/user.entity';
 
 export const UserRepository = AppDataSource.getRepository(User).extend({
   async getAllUsers(params: PaginatedRequest): Promise<PaginatedResponse<User>> {

@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import JwtUtil from '../../shared/utils/jwt.util';
 import { UserRole } from '../../shared/constants/roles';
-import { UserSession } from '../database/entities/user-session.entity';
 import { AppDataSource } from '../database/config/database.config';
+import { UserSession } from '../database/entities/entities/user-session.entity';
 
 
 /**
@@ -61,7 +61,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
       }
 
       // Verificar si el usuario está activo
-      if (!session.user.isActive) {
+      if (!session.isActive) {
         res.status(401).json({
           success: false,
           message: 'Usuario inactivo'
@@ -71,7 +71,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
 
       req.user = {
         userId: decoded.userId,
-        role: session.user.role as UserRole,
+        role: session.userRole as UserRole,
         sessionId: decoded.sessionId
       };
       

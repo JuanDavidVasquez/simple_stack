@@ -5,10 +5,10 @@ import { ApplicationError } from '../../shared/errors/application.error';
 import { z } from 'zod';
 import setupLogger from '../../shared/utils/logger';
 import { config } from '../../core/config/env';
-import { User } from '../../core/database/entities/user.entity';
 import { CreateUserData, createUserSchema, getPasswordSchemaByRole, UpdateUserData, updateUserSchema } from '../../shared/schemas/password.schema';
 import BcryptUtil from '../../shared/utils/bcrypt.util';
 import { EmailService } from '../../templates/email.service';
+import { User } from '../../core/database/entities/entities/user.entity';
 
 export class UserService {
   private readonly logger = setupLogger({

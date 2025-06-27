@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppDataSource } from '../database/config/database.config';
-import { User } from '../database/entities/user.entity';
 import { UserRole } from '../../shared/constants/roles';
+import { User } from '../database/entities/entities/user.entity';
 
 // Extiende la interfaz Request para incluir información del usuario y roles
 declare module 'express-serve-static-core' {
