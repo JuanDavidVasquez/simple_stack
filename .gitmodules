@@ -1,0 +1,3 @@
+[submodule "src/core/database/entities"]
+	path = src/core/database/entities
+	url = https://github.com/JuanDavidVasquez/stack_models.git
