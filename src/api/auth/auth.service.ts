@@ -11,6 +11,8 @@ import { EmailService, SupportedLanguage } from '../../templates/email.service';
 
 
 export class AuthService {
+
+
   private readonly logger = setupLogger({
     ...config.logging,
     dir: `${config.logging.dir}/services/auth`,

@@ -9,30 +9,18 @@ import {
 } from 'typeorm';
 import { UserRole } from '../../../shared/constants/roles';
 import { USER_TABLE_NAME } from '../../../core/config/user-table.config';
+import { BaseUser } from './base-user.entity';
 
 @Entity(USER_TABLE_NAME)
 @Index(['email'], { unique: true })
 @Index(['username'], { unique: true })
 @Index(['lastLoginAt'])
 @Index(['lockedUntil'])
-export class User {
-    @PrimaryGeneratedColumn('uuid')
-    id!: string;
+export class User extends BaseUser {
 
-    @Column()
-    email!: string;
 
     @Column({ type: 'varchar', length: 100, nullable: true })
     username?: string | null;
-
-    @Column()
-    password!: string;
-
-    @Column()
-    firstName!: string;
-
-    @Column()
-    lastName!: string;
 
     @Column({
         type: 'enum',
@@ -42,9 +30,6 @@ export class User {
         comment: 'Rol del usuario: admin, user, doctor',
     })
     role!: UserRole;
-
-    @Column({ default: false })
-    isActive!: boolean;
 
     @Column({ default: false })
     isVerified!: boolean;
@@ -89,14 +74,4 @@ export class User {
 
     @Column({ type: 'datetime', nullable: true })
     resetPasswordExpires?: Date | null;
-
-    // Auditoría
-    @CreateDateColumn({ name: 'created_at' })
-    createdAt!: Date;
-
-    @UpdateDateColumn({ name: 'updated_at' })
-    updatedAt?: Date;
-
-    @DeleteDateColumn({ name: 'deleted_at' })
-    deletedAt?: Date | null;
 }
