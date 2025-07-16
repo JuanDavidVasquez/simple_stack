@@ -3,6 +3,7 @@ import JwtUtil from '../../shared/utils/jwt.util';
 import { UserRole } from '../../shared/constants/roles';
 import { AppDataSource } from '../database/config/database.config';
 import { UserSession } from '../database/entities/entities/user-session.entity';
+import { ResponseUtil } from '../../shared/utils/response.util';
 
 
 /**
@@ -14,10 +15,12 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json({
-        success: false,
-        message: 'Token de acceso requerido'
-      });
+      ResponseUtil.error(
+        req,
+        res,
+        'errors.auth.token_required',
+        401
+      );
       return;
     }
 
@@ -35,10 +38,12 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         },
       });
       if (!session) {
-        res.status(401).json({
-          success: false,
-          message: 'Sesión no válida o inactiva'
-        });
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.auth.session_not_found',
+          401
+        );
         return;
       }
 
@@ -60,10 +65,12 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
       console.log(session)
       // Verificar si el usuario está activo
       if (!session.isActive) {
-        res.status(401).json({
-          success: false,
-          message: 'Usuario inactivo'
-        });
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.auth.inactive_user',
+          403
+        );
         return;
       }
       req.user = {
@@ -75,18 +82,23 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
       next();
 
     } catch (jwtError) {
-      res.status(401).json({
-        success: false,
-        message: 'Token inválido o expirado'
-      });
+      ResponseUtil.error(
+        req,
+        res,
+        'errors.auth.invalid_token',
+        401
+      );
       return;
     }
   } catch (error) {
     console.error('Error en authMiddleware:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
-    });
+
+    ResponseUtil.error(
+      req,
+      res,
+      'errors.general.internal_server',
+      500
+    );
     return;
   }
 };
@@ -100,19 +112,25 @@ export const adminMiddleware = (req: Request, res: Response, next: NextFunction)
   try {
     // Verificar que el usuario esté autenticado (debe venir de authMiddleware)
     if (!req.user) {
-      res.status(401).json({
-        success: false,
-        message: 'Usuario no autenticado'
-      });
+
+      ResponseUtil.error(
+        req,
+        res,
+        'errors.general.unauthenticated',
+        401
+      );
       return;
     }
 
     // Verificar que el usuario tenga rol de administrador
     if (req.user.role !== 'admin') {
-      res.status(403).json({
-        success: false,
-        message: 'Acceso denegado. Se requieren permisos de administrador'
-      });
+
+      ResponseUtil.error(
+        req,
+        res,
+        'errors.general.forbidden',
+        403
+      );
       return;
     }
 
@@ -120,10 +138,12 @@ export const adminMiddleware = (req: Request, res: Response, next: NextFunction)
     next();
   } catch (error) {
     console.error('Error en adminMiddleware:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
-    });
+    ResponseUtil.error(
+      req,
+      res,
+      'errors.general.internal_server',
+      500
+    );
     return;
   }
 };
@@ -136,10 +156,12 @@ export const adminMiddleware = (req: Request, res: Response, next: NextFunction)
 export const adminOrOwnerMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   try {
     if (!req.user) {
-      res.status(401).json({
-        success: false,
-        message: 'Usuario no autenticado'
-      });
+      ResponseUtil.error(
+        req,
+        res,
+        'errors.general.unauthenticated',
+        401
+      );
       return;
     }
 
@@ -151,20 +173,28 @@ export const adminOrOwnerMiddleware = (req: Request, res: Response, next: NextFu
     console.log(`ID del usuario objetivo: ${targetUserId}`);
 
     if (!isAdmin && !isOwner) {
-      res.status(403).json({
-        success: false,
-        message: 'Acceso denegado. Solo puedes acceder a tus propios datos'
-      });
+      ResponseUtil.error(
+        req,
+        res,
+        'errors.general.forbidden',
+        403,
+        {
+          required_roles: ['admin', 'owner'],
+          user_role: req.user.role
+        }
+      );
       return;
     }
 
     next();
   } catch (error) {
     console.error('Error en adminOrOwnerMiddleware:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor'
-    });
+    ResponseUtil.error(
+      req,
+      res,
+      'errors.general.internal_server',
+      500
+    );
     return;
   }
 };

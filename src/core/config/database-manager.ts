@@ -13,7 +13,7 @@ export class DatabaseManager {
   private initialized: boolean = false;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 10;
-  private reconnectDelay: number = 5000; // 5 segundos
+  private reconnectDelay: number = 5000;
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private logger = setupLogger({
     ...config.logging,
