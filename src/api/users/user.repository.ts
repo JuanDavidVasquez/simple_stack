@@ -15,7 +15,21 @@ export const UserRepository = AppDataSource.getRepository(User).extend({
     const offset = (page - 1) * limit;
 
     // Construimos el query
-    const queryBuilder = this.createQueryBuilder('user');
+  const queryBuilder = this.createQueryBuilder('user')
+      .select([
+        'user.id',
+        'user.email',
+        'user.username',
+        'user.firstName',
+        'user.lastName',
+        'user.role',
+        'user.isActive',
+        'user.isVerified',
+        'user.avatarUrl',
+        'user.lastLoginAt',
+        'user.createdAt',
+        'user.updatedAt',
+      ]);
 
     // Aplicar filtros dinámicos
     Object.entries(filters).forEach(([key, value]) => {
@@ -27,11 +41,10 @@ export const UserRepository = AppDataSource.getRepository(User).extend({
     // Ordenar
     queryBuilder.orderBy(`user.${sortBy}`, sortOrder.toUpperCase() as 'ASC' | 'DESC');
 
+    
+
     // Paginación
     queryBuilder.skip(offset).take(limit);
-
-    console.log('Generated SQL:', queryBuilder.getSql());
-    console.log('Query parameters:', queryBuilder.getParameters());
 
     // Ejecutar query y contar total
     const [data, total] = await queryBuilder.getManyAndCount();

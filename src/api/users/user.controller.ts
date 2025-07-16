@@ -41,7 +41,6 @@ export class UserController {
       if (!result || result.data.length === 0) {
         this.logger.warn('No users found');
         
-        // ✅ Usar clave de error correcta para "no encontrado"
         ResponseUtil.error(
           req,
           res,

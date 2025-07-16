@@ -5,9 +5,10 @@ import { ApplicationError } from '../../shared/errors/application.error';
 import { ChangePasswordData, changePasswordSchema, getPasswordSchemaByRole, LoginData, loginSchema } from '../../shared/schemas/password.schema';
 import BcryptUtil from '../../shared/utils/bcrypt.util';
 import setupLogger from '../../shared/utils/logger';
-import { EmailService, SupportedLanguage } from '../../templates/email.service';
 import { Repository } from 'typeorm';
 import { AUTH_TABLE_NAME } from '../../core/config/user-table.config';
+import { NotificationClientService } from '../notifications/notification-client.service';
+import { SupportedLanguage } from '../../i18n';
 
 export class AuthService {
   private readonly logger = setupLogger({
@@ -19,12 +20,12 @@ export class AuthService {
 
   constructor(
     private readonly databaseManager: DatabaseManager,
-    private readonly emailService: EmailService
+    private readonly notificationService: NotificationClientService
   ) {
     // Inicializar el repositorio dinámico con la tabla configurada
     const connection = this.databaseManager.getConnection();
     this.authRepository = connection.getRepository(AUTH_TABLE_NAME);
-    
+
     this.logger.info(`AuthService initialized for table: ${AUTH_TABLE_NAME}`);
   }
 
@@ -33,17 +34,17 @@ export class AuthService {
    */
   public async authenticateUser(loginData: LoginData): Promise<any> {
     this.logger.info(`Authenticating user with email: ${loginData.email} from table: ${AUTH_TABLE_NAME}`);
-    
+
     try {
       // Validar datos de login con Zod
       const validatedData = loginSchema.parse(loginData);
-      
+
       // Buscar usuario por email en la tabla dinámica
       const user = await this.authRepository
         .createQueryBuilder('user')
         .select([
-          'user.id', 'user.email', 'user.password', 'user.firstName', 'user.lastName', 
-          'user.role', 'user.isActive', 'user.isVerified', 'user.loginAttempts', 
+          'user.id', 'user.email', 'user.password', 'user.firstName', 'user.lastName',
+          'user.role', 'user.isActive', 'user.isVerified', 'user.loginAttempts',
           'user.lockedUntil', 'user.username'
         ])
         .where('user.email = :email', { email: validatedData.email.toLowerCase() })
@@ -66,7 +67,7 @@ export class AuthService {
 
       // Verificar la contraseña
       const isPasswordValid = await BcryptUtil.comparePassword(validatedData.password, user.password);
-      
+
       if (!isPasswordValid) {
         // Incrementar intentos de login
         await this.handleFailedLogin(user);
@@ -78,16 +79,16 @@ export class AuthService {
 
       // Remover la contraseña de la respuesta
       const { password: _, ...userResponse } = user;
-      
+
       this.logger.info(`User ${user.id} from table ${AUTH_TABLE_NAME} authenticated successfully`);
       return userResponse as any;
-      
+
     } catch (error) {
       if (error instanceof z.ZodError) {
         const errorMessages = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
         throw new ApplicationError(`Validation failed: ${errorMessages.join(', ')}`);
       }
-      
+
       this.logger.error(`Error authenticating user from table ${AUTH_TABLE_NAME}:`, error);
       throw error;
     }
@@ -98,11 +99,11 @@ export class AuthService {
    */
   public async changePassword(userId: string, changeData: ChangePasswordData): Promise<void> {
     this.logger.info(`Changing password for user ${userId} in table ${AUTH_TABLE_NAME}`);
-    
+
     try {
       // Validar datos con Zod
       const validatedData = changePasswordSchema.parse(changeData);
-      
+
       // Obtener usuario con contraseña
       const user = await this.authRepository
         .createQueryBuilder('user')
@@ -116,10 +117,10 @@ export class AuthService {
 
       // Verificar contraseña actual
       const isCurrentPasswordValid = await BcryptUtil.comparePassword(
-        validatedData.currentPassword, 
+        validatedData.currentPassword,
         user.password
       );
-      
+
       if (!isCurrentPasswordValid) {
         throw new ApplicationError('Current password is incorrect');
       }
@@ -130,10 +131,10 @@ export class AuthService {
 
       // Verificar que la nueva contraseña sea diferente
       const isSamePassword = await BcryptUtil.comparePassword(
-        validatedData.newPassword, 
+        validatedData.newPassword,
         user.password
       );
-      
+
       if (isSamePassword) {
         throw new ApplicationError('New password must be different from current password');
       }
@@ -142,19 +143,19 @@ export class AuthService {
       const hashedNewPassword = await BcryptUtil.hashPassword(validatedData.newPassword);
 
       // Actualizar contraseña en la tabla dinámica
-      await this.authRepository.update(userId, { 
+      await this.authRepository.update(userId, {
         password: hashedNewPassword,
         updatedAt: new Date()
       });
-      
+
       this.logger.info(`Password changed successfully for user ${userId} in table ${AUTH_TABLE_NAME}`);
-      
+
     } catch (error) {
       if (error instanceof z.ZodError) {
         const errorMessages = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
         throw new ApplicationError(`Validation failed: ${errorMessages.join(', ')}`);
       }
-      
+
       this.logger.error(`Error changing password for user ${userId} in table ${AUTH_TABLE_NAME}:`, error);
       throw error;
     }
@@ -165,17 +166,17 @@ export class AuthService {
    */
   public async resetPassword(email: string, acceptLanguage: string): Promise<{ success: boolean; temporaryPassword?: string }> {
     this.logger.info(`Resetting password for user with email: ${email} from table ${AUTH_TABLE_NAME}`);
-    
+
     try {
       const user = await this.authRepository
         .createQueryBuilder('user')
         .where('user.email = :email', { email: email.toLowerCase() })
         .getOne();
-      
+
       if (!user) {
         // Por seguridad, no revelar si el email existe o no
         this.logger.warn(`Password reset attempted for non-existent email: ${email} in table ${AUTH_TABLE_NAME}`);
-        return { 
+        return {
           success: true // Siempre devolver éxito por seguridad
         };
       }
@@ -189,7 +190,7 @@ export class AuthService {
       const resetExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
 
       // Actualizar usuario con nueva contraseña y token de reset
-      await this.authRepository.update(user.id, { 
+      await this.authRepository.update(user.id, {
         password: hashedPassword,
         resetPasswordToken: resetToken,
         resetPasswordExpires: resetExpiry,
@@ -199,25 +200,37 @@ export class AuthService {
       });
 
       this.logger.info(`Password reset successfully for user ${user.id} in table ${AUTH_TABLE_NAME}`);
-      
+
       // Enviar email con la nueva contraseña al usuario
-      await this.emailService.sendEmail({
+      const sendEmail = await this.notificationService.send({
+        type: 'email',
         to: user.email,
-        template: 'password-reset',
+        priority: 'normal',
+        url: 'emails/password-reset',
         language: (['en', 'es'].includes(acceptLanguage) ? acceptLanguage : 'en') as SupportedLanguage,
         data: {
           firstName: user.firstName,
           temporaryPassword: temporaryPassword,
           resetToken: resetToken,
-          resetExpiry: resetExpiry.toISOString()
+          resetExpiry: resetExpiry.toISOString(),
+          year: new Date().getFullYear(),
+          companyLogoUrl: `${config.app.baseUrl}/images/logo.png`,
+          companyName: config.app.name,
         }
       });
 
+
+      if (!sendEmail) {
+        this.logger.warn(`Failed to send password reset email to ${user.email}`);
+      } else {
+        this.logger.info(`Password reset email sent successfully to ${user.email}`);
+      }
+
       return {
         success: true,
-        ...(config.app.env === 'development' && { temporaryPassword })
+        ...(config.app.env === 'local' && { temporaryPassword })
       };
-      
+
     } catch (error) {
       this.logger.error(`Error resetting password for email ${email} in table ${AUTH_TABLE_NAME}:`, error);
       throw error;
@@ -241,14 +254,14 @@ export class AuthService {
 
       if (user.lockedUntil && user.lockedUntil > new Date()) {
         const lockTimeRemaining = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
-        return { 
-          canAttempt: false, 
-          lockTimeRemaining 
+        return {
+          canAttempt: false,
+          lockTimeRemaining
         };
       }
 
       return { canAttempt: true };
-      
+
     } catch (error) {
       this.logger.error(`Error checking login attempt for email ${email} in table ${AUTH_TABLE_NAME}:`, error);
       return { canAttempt: false };
@@ -260,16 +273,16 @@ export class AuthService {
    */
   public async unlockAccount(userId: string): Promise<void> {
     this.logger.info(`Manually unlocking account for user ${userId} in table ${AUTH_TABLE_NAME}`);
-    
+
     try {
       await this.authRepository.update(userId, {
         loginAttempts: 0,
         lockedUntil: null,
         updatedAt: new Date()
       });
-      
+
       this.logger.info(`Account unlocked successfully for user ${userId} in table ${AUTH_TABLE_NAME}`);
-      
+
     } catch (error) {
       this.logger.error(`Error unlocking account for user ${userId} in table ${AUTH_TABLE_NAME}:`, error);
       throw error;
@@ -298,7 +311,7 @@ export class AuthService {
       }
 
       const isLocked = user.lockedUntil ? user.lockedUntil > new Date() : false;
-      const lockTimeRemaining = isLocked 
+      const lockTimeRemaining = isLocked
         ? Math.ceil((user.lockedUntil!.getTime() - Date.now()) / 60000)
         : undefined;
 
@@ -309,7 +322,7 @@ export class AuthService {
         lastLoginAt: user.lastLoginAt || undefined,
         hasResetToken: !!user.resetPasswordToken
       };
-      
+
     } catch (error) {
       this.logger.error(`Error getting security stats for user ${userId} in table ${AUTH_TABLE_NAME}:`, error);
       throw error;
@@ -324,7 +337,7 @@ export class AuthService {
     const lockoutDuration = 15 * 60 * 1000; // 15 minutos
 
     const newAttempts = (user.loginAttempts || 0) + 1;
-    
+
     if (newAttempts >= maxAttempts) {
       // Bloquear cuenta temporalmente
       const lockedUntil = new Date(Date.now() + lockoutDuration);
@@ -332,13 +345,13 @@ export class AuthService {
         loginAttempts: newAttempts,
         lockedUntil
       });
-      
+
       this.logger.warn(`User ${user.id} account locked due to ${newAttempts} failed login attempts in table ${AUTH_TABLE_NAME}`);
     } else {
       await this.authRepository.update(user.id, {
         loginAttempts: newAttempts
       });
-      
+
       this.logger.info(`Failed login attempt ${newAttempts}/${maxAttempts} for user ${user.id} in table ${AUTH_TABLE_NAME}`);
     }
   }

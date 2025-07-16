@@ -4,10 +4,10 @@ import { AuthService } from "../api/auth/auth.service";
 import { SessionService } from "../api/session/session.service";
 import { DatabaseManager } from "../core/config/database-manager";
 import { createLocalizedProxy } from "../shared/utils/controller-proxy.util";
-import { EmailService } from "../templates/email.service";
 import { AUTH_TABLE_NAME } from "../core/config/auth-table.config";
 import setupLogger from "../shared/utils/logger";
 import { config } from "../core/config/env";
+import { NotificationClientService } from "../api/notifications/notification-client.service";
 
 const logger = setupLogger({
   ...config.logging,
@@ -22,12 +22,12 @@ export const createAuthController = async () => {
     await databaseManager.initialize();
 
     // Crear servicios
-    const emailService = new EmailService();
+    const notificationService = new NotificationClientService();
     const sessionService = new SessionService(databaseManager);
     
     // ✅ AuthService ahora recibe DatabaseManager y EmailService
     // El repositorio dinámico se crea internamente basado en AUTH_TABLE_NAME
-    const authService = new AuthService(databaseManager, emailService);
+    const authService = new AuthService(databaseManager, notificationService);
     
     // Crear controlador
     const controller = new AuthController(authService, sessionService);

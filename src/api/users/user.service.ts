@@ -7,8 +7,8 @@ import setupLogger from '../../shared/utils/logger';
 import { config } from '../../core/config/env';
 import { CreateUserData, createUserSchema, getPasswordSchemaByRole, UpdateUserData, updateUserSchema } from '../../shared/schemas/password.schema';
 import BcryptUtil from '../../shared/utils/bcrypt.util';
-import { EmailService } from '../../templates/email.service';
 import { User } from '../../core/database/entities/entities/user.entity';
+import { NotificationClientService } from '../notifications/notification-client.service';
 
 export class UserService {
   private readonly logger = setupLogger({
@@ -19,7 +19,7 @@ export class UserService {
   constructor(
     private readonly databaseManager: DatabaseManager,
     private readonly repository: typeof UserRepository,
-    private readonly emailService: EmailService
+    private readonly notificationService: NotificationClientService
   ) {
     this.logger.info('UserService initialized');
   }
@@ -154,22 +154,31 @@ export class UserService {
 
 
       // Email de bienvenida
-      await this.emailService.sendEmail({
+      this.logger.info(`Sending welcome email to ${user.email}`);
+
+      const sendEmail =await this.notificationService.send({
+        type: 'email',
         to: user.email,
-        template: 'welcome',
-        language: userData.lenguaje || 'en',
+        language: validatedData.lenguaje,
+        priority: 'normal',
+        url: 'emails/welcome',
         data: {
-          appName: config.app.name,
-          userName: `${user.firstName} ${user.lastName}`,
-          firstName: user.firstName,
-          confirmationCode: verificationCode,
-          confirmationUrl: `${config.app.frontendUrl}/verify/${verificationCode}`,
-          year: new Date().getFullYear(),
-          companyLogoUrl: `${config.app.baseUrl}/images/logo.png`,
-          companyName: config.app.name,
+        appName: config.app.name,
+        userName: `${user.firstName} ${user.lastName}`,
+        firstName: user.firstName,
+        confirmationCode: verificationCode,
+        confirmationUrl: `${config.app.frontendUrl}/verify/${verificationCode}`,
+        year: new Date().getFullYear(),
+        companyLogoUrl: `${config.app.baseUrl}/images/logo.png`,
+        companyName: config.app.name,
         }
       });
 
+      if (!sendEmail) {
+        this.logger.warn(`Failed to send welcome email to ${user.email}`);
+      } else {
+        this.logger.info(`Welcome email sent successfully to ${user.email}`);
+      }
 
       return userResponse as User;
 

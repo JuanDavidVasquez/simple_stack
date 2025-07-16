@@ -27,7 +27,7 @@ export const AppDataSource = new DataSource({
   timezone: config.database.timezone,
   
   // Rutas de entidades, migraciones y subscribers
-  entities: Object.values(Entities),
+  entities: Object.values(Entities) as (Function | string | import("typeorm").EntitySchema<any>)[],
   migrations: [
     __dirname + "/../migrations/**/*{.ts,.js}",
   ],
