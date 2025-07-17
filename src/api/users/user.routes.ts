@@ -3,6 +3,10 @@ import { createUserController } from '../../factories/user.factory';
 import { adminOrOwnerMiddleware, authMiddleware } from '../../core/middlewares/auth.middleware';
 import { authorizeRoles } from '../../core/middlewares/authorizeRoles.middleware';
 import { UserRole } from '../../shared/constants/roles';
+import { validateBody, validateParams } from '../../core/middlewares/validationShema.middleware';
+import { emailSchema } from '../../shared/schemas/email.shema';
+import { uuidSchema } from '../../shared/schemas/uuid.shema';
+import { userUpdateSchema } from '../../shared/schemas/user.shema';
 
 const router = Router();
 const userController = createUserController();
@@ -17,6 +21,7 @@ router.post('/create', userController.createUser);
 
 // ✅ Rutas específicas primero
 router.get('/email/:email', 
+    validateBody(emailSchema),
     authMiddleware, 
     authorizeRoles(UserRole.ADMIN), 
     userController.getUserByEmail
@@ -34,21 +39,26 @@ router.get('/get-users-by-role/:role',
 
 // ✅ Ruta dinámica
 router.get('/:id', 
+    validateParams(uuidSchema),
     authMiddleware, 
     authorizeRoles(UserRole.ADMIN), 
     userController.getUserById
 );
 router.put('/:id', 
+    validateParams(uuidSchema),
+    validateBody(userUpdateSchema),
     authMiddleware, 
     adminOrOwnerMiddleware, 
     userController.updateUser
 );
 router.delete('/:id', 
+    validateParams(uuidSchema),
     authMiddleware, 
     authorizeRoles(UserRole.ADMIN), 
     userController.deleteUser
 );
 router.delete('/soft/:id', 
+    validateParams(uuidSchema),
     authMiddleware, 
     authorizeRoles(UserRole.ADMIN), 
     userController.softDeleteUser

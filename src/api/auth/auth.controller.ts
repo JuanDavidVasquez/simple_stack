@@ -6,6 +6,7 @@ import { config } from '../../core/config/env';
 import { AuthService } from './auth.service';
 import { SessionService } from '../session/session.service';
 import { AUTH_TABLE_NAME } from '../../core/config/user-table.config';
+import { ResponseUtil } from '../../shared/utils/response.util';
 
 // Extender la interfaz Request para incluir información de usuario y sesión
 declare global {
@@ -38,7 +39,7 @@ export class AuthController {
    * Login de usuario con gestión de sesiones
    */
   public login = async (req: Request, res: Response): Promise<void> => {
-    this.logger.info('Received login request', { 
+    this.logger.info('Received login request', {
       email: req.body.email,
       table: AUTH_TABLE_NAME,
       ip: req.ip,
@@ -51,15 +52,16 @@ export class AuthController {
       // Verificar si puede intentar login
       const loginCheck = await this.authService.canAttemptLogin(email);
       if (!loginCheck.canAttempt) {
-        const message = loginCheck.lockTimeRemaining 
+        const message = loginCheck.lockTimeRemaining
           ? `Account is locked. Try again in ${loginCheck.lockTimeRemaining} minutes`
           : 'Cannot attempt login at this time';
-        
-        res.status(423).json({ 
-          status: 'error',
+
+        ResponseUtil.error(
+          req,
+          res,
           message,
-          lockTimeRemaining: loginCheck.lockTimeRemaining
-        });
+          423
+        );
         return;
       }
 
@@ -78,8 +80,8 @@ export class AuthController {
       });
 
       this.logger.info(`User ${user.id} from table ${AUTH_TABLE_NAME} logged in successfully with session ${sessionData.sessionId}`);
-      
-      res.status(200).json({
+
+    /*   res.status(200).json({
         status: 'success',
         message: 'Login successful',
         data: {
@@ -93,11 +95,28 @@ export class AuthController {
           accessExpiresAt: sessionData.accessExpiresAt,
           refreshExpiresAt: sessionData.refreshExpiresAt,
         }
-      });
+      }); */
+
+      ResponseUtil.success(
+        req,
+        res,
+        'success.auth.login',
+        {
+          user: {
+            ...user,
+            sourceTable: AUTH_TABLE_NAME
+          },
+          sessionId: sessionData.sessionId,
+          accessToken: sessionData.accessToken,
+          refreshToken: sessionData.refreshToken,
+          accessExpiresAt: sessionData.accessExpiresAt,
+          refreshExpiresAt: sessionData.refreshExpiresAt,
+        }
+      );
 
     } catch (error) {
       this.logger.error(`Login error for table ${AUTH_TABLE_NAME}:`, error);
-      
+
       if (error instanceof ApplicationError) {
         res.status(401).json({
           status: 'error',
@@ -132,7 +151,7 @@ export class AuthController {
       const tokenPair = await this.sessionService.refreshSession(refreshToken);
 
       this.logger.info(`Token refreshed successfully for table: ${AUTH_TABLE_NAME}`);
-      
+
       res.status(200).json({
         status: 'success',
         message: 'Token refreshed successfully',
@@ -146,7 +165,7 @@ export class AuthController {
 
     } catch (error) {
       this.logger.error(`Refresh token error for table ${AUTH_TABLE_NAME}:`, error);
-      
+
       if (error instanceof ApplicationError) {
         res.status(401).json({
           status: 'error',
@@ -169,7 +188,7 @@ export class AuthController {
 
     try {
       const sessionId = req.sessionId || req.user?.sessionId;
-      
+
       if (!sessionId) {
         res.status(400).json({
           status: 'error',
@@ -189,7 +208,7 @@ export class AuthController {
 
     } catch (error) {
       this.logger.error(`Logout error for table ${AUTH_TABLE_NAME}:`, error);
-      
+
       res.status(500).json({
         status: 'error',
         message: 'Internal server error during logout'
@@ -205,7 +224,7 @@ export class AuthController {
 
     try {
       const userId = req.user?.userId;
-      
+
       if (!userId) {
         res.status(401).json({
           status: 'error',
@@ -216,8 +235,8 @@ export class AuthController {
 
       // ✅ Revocar sesiones solo de esta tabla específica
       const revokedCount = await this.sessionService.revokeAllUserSessionsFromTable(
-        userId, 
-        AUTH_TABLE_NAME, 
+        userId,
+        AUTH_TABLE_NAME,
         'user_logout_all'
       );
 
@@ -230,7 +249,7 @@ export class AuthController {
 
     } catch (error) {
       this.logger.error(`Logout all error for table ${AUTH_TABLE_NAME}:`, error);
-      
+
       res.status(500).json({
         status: 'error',
         message: 'Internal server error during logout all'
@@ -247,7 +266,7 @@ export class AuthController {
     try {
       const userId = req.user?.userId;
       const currentSessionId = req.user?.sessionId;
-      
+
       if (!userId) {
         res.status(401).json({
           status: 'error',
@@ -258,8 +277,8 @@ export class AuthController {
 
       // ✅ Obtener sesiones solo de esta tabla específica
       const sessions = await this.sessionService.getUserSessionsFromTable(
-        userId, 
-        AUTH_TABLE_NAME, 
+        userId,
+        AUTH_TABLE_NAME,
         currentSessionId
       );
 
@@ -274,7 +293,7 @@ export class AuthController {
 
     } catch (error) {
       this.logger.error(`Get user sessions error for table ${AUTH_TABLE_NAME}:`, error);
-      
+
       res.status(500).json({
         status: 'error',
         message: 'Internal server error'
@@ -286,7 +305,7 @@ export class AuthController {
    * Cambio de contraseña con invalidación de sesiones
    */
   public changePassword = async (req: Request, res: Response): Promise<void> => {
-    this.logger.info('Received change password request', { 
+    this.logger.info('Received change password request', {
       userId: req.params.userId,
       table: AUTH_TABLE_NAME
     });
@@ -305,18 +324,18 @@ export class AuthController {
       if (logoutOtherDevices) {
         const currentSessionId = req.user?.sessionId;
         await this.sessionService.revokeAllUserSessionsFromTable(
-          userId, 
-          AUTH_TABLE_NAME, 
+          userId,
+          AUTH_TABLE_NAME,
           'password_changed'
         );
-        
+
         if (currentSessionId) {
           this.logger.info(`Maintained current session ${currentSessionId} after password change`);
         }
       }
 
       this.logger.info(`Password changed successfully for user ${userId} in table ${AUTH_TABLE_NAME}`);
-      
+
       res.status(200).json({
         status: 'success',
         message: 'Password changed successfully',
@@ -327,7 +346,7 @@ export class AuthController {
 
     } catch (error) {
       this.logger.error(`Change password error for table ${AUTH_TABLE_NAME}:`, error);
-      
+
       if (error instanceof ApplicationError) {
         res.status(400).json({
           status: 'error',
@@ -346,21 +365,24 @@ export class AuthController {
    * Reset de contraseña
    */
   public resetPassword = async (req: Request, res: Response): Promise<void> => {
-    this.logger.info('Received password reset request', { 
+    this.logger.info('Received password reset request', {
       email: req.body.email,
       table: AUTH_TABLE_NAME
     });
-    
+
     const acceptLanguage = req.headers['accept-language'] || 'en';
-    
+
     try {
       const { email } = req.body;
 
       if (!email) {
-        res.status(400).json({
-          status: 'error',
-          message: 'Email is required'
-        });
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.auth.email_required',
+          400
+        );
+
         return;
       }
 
@@ -369,18 +391,29 @@ export class AuthController {
       res.status(200).json({
         status: 'success',
         message: 'If the email exists, a password reset has been sent',
-        ...(config.app.env === 'development' && result.temporaryPassword && {
+        ...(config.app.env === 'local' && result.temporaryPassword && {
           temporaryPassword: result.temporaryPassword
         })
       });
 
+      ResponseUtil.success(
+        req,
+        res,
+        'success.auth.password_reset',
+        undefined,
+        200,
+
+      )
+
     } catch (error) {
       this.logger.error(`Password reset error for table ${AUTH_TABLE_NAME}:`, error);
-      
-      res.status(500).json({
-        status: 'error',
-        message: 'Internal server error during password reset'
-      });
+
+      ResponseUtil.error(
+        req,
+        res,
+        'errors.auth.password_reset',
+        500
+      );
     }
   };
 
@@ -392,30 +425,37 @@ export class AuthController {
       const { email } = req.query;
 
       if (!email || typeof email !== 'string') {
-        res.status(400).json({
-          status: 'error',
-          message: 'Email is required'
-        });
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.auth.email_required',
+          400
+        );
         return;
       }
 
       const loginCheck = await this.authService.canAttemptLogin(email);
 
-      res.status(200).json({
-        status: 'success',
-        data: {
-          ...loginCheck,
+      ResponseUtil.success(
+        req,
+        res,
+        'success.auth.check_login_status',
+        {
+          email: email,
           sourceTable: AUTH_TABLE_NAME
-        }
-      });
+        },
+        200,
+      );
 
     } catch (error) {
       this.logger.error(`Check login status error for table ${AUTH_TABLE_NAME}:`, error);
-      
-      res.status(500).json({
-        status: 'error',
-        message: 'Internal server error'
-      });
+
+      ResponseUtil.error(
+        req,
+        res,
+        'errors.auth.check_login_status',
+        500
+      );
     }
   };
 
@@ -423,7 +463,7 @@ export class AuthController {
    * Desbloquear cuenta (solo para administradores)
    */
   public unlockAccount = async (req: Request, res: Response): Promise<void> => {
-    this.logger.info('Received unlock account request', { 
+    this.logger.info('Received unlock account request', {
       userId: req.params.userId,
       table: AUTH_TABLE_NAME
     });
@@ -432,35 +472,47 @@ export class AuthController {
       const { userId } = req.params;
 
       if (!req.user || req.user.role !== 'admin') {
-        res.status(403).json({
-          status: 'error',
-          message: 'Admin access required'
-        });
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.auth.unauthorized_access',
+          403
+        );
         return;
       }
 
       await this.authService.unlockAccount(userId);
 
       this.logger.info(`Account unlocked successfully for user ${userId} in table ${AUTH_TABLE_NAME}`);
-      
-      res.status(200).json({
-        status: 'success',
-        message: 'Account unlocked successfully'
-      });
+
+      ResponseUtil.success(
+        req,
+        res,
+        'success.auth.account_unlocked',
+        {
+          userId,
+          sourceTable: AUTH_TABLE_NAME
+        },
+        200
+      );
 
     } catch (error) {
       this.logger.error(`Unlock account error for table ${AUTH_TABLE_NAME}:`, error);
-      
+
       if (error instanceof ApplicationError) {
-        res.status(404).json({
-          status: 'error',
-          message: error.message
-        });
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.auth.account_not_found',
+          404
+        );
       } else {
-        res.status(500).json({
-          status: 'error',
-          message: 'Internal server error during account unlock'
-        });
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.auth.internal_server_error',
+          500
+        );
       }
     }
   };
@@ -473,10 +525,12 @@ export class AuthController {
       const { userId } = req.params;
 
       if (!req.user || (req.user.userId !== userId && req.user.role !== 'admin')) {
-        res.status(403).json({
-          status: 'error',
-          message: 'Access denied'
-        });
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.auth.unauthorized_access',
+          403
+        );
         return;
       }
 
@@ -485,29 +539,34 @@ export class AuthController {
         this.sessionService.getUserSessionsFromTable(userId, AUTH_TABLE_NAME)
       ]);
 
-      res.status(200).json({
-        status: 'success',
-        data: {
-          ...authStats,
+      ResponseUtil.success(
+        req,
+        res,
+        'success.auth.get_user_security_stats',
+        {
+          userId,
+          authStats,
           activeSessions: sessions.length,
-          sessions: sessions,
           sourceTable: AUTH_TABLE_NAME
-        }
-      });
+        },
+        200
+      );
 
     } catch (error) {
       this.logger.error(`Get security stats error for table ${AUTH_TABLE_NAME}:`, error);
-      
+
       if (error instanceof ApplicationError) {
         res.status(404).json({
           status: 'error',
           message: error.message
         });
       } else {
-        res.status(500).json({
-          status: 'error',
-          message: 'Internal server error'
-        });
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.auth.get_user_security_stats',
+          500
+        );
       }
     }
   };
@@ -521,32 +580,38 @@ export class AuthController {
     try {
       const { sessionId } = req.params;
       const userId = req.user?.userId;
-      
+
       if (!userId) {
-        res.status(401).json({
-          status: 'error',
-          message: 'User not authenticated'
-        });
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.auth.user_not_authenticated',
+          401
+        );
         return;
       }
 
       if (!sessionId) {
-        res.status(400).json({
-          status: 'error',
-          message: 'Session ID is required'
-        });
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.auth.session_id_required',
+          400
+        );
         return;
       }
 
       // Verificar que la sesión pertenece al usuario actual y a esta tabla
       const userSessions = await this.sessionService.getUserSessionsFromTable(userId, AUTH_TABLE_NAME);
       const sessionExists = userSessions.some(session => session.sessionId === sessionId);
-      
+
       if (!sessionExists) {
-        res.status(404).json({
-          status: 'error',
-          message: 'Session not found or does not belong to user'
-        });
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.auth.session_not_found',
+          404
+        );
         return;
       }
 
@@ -554,18 +619,27 @@ export class AuthController {
 
       this.logger.info(`Session ${sessionId} revoked by user ${userId} from table ${AUTH_TABLE_NAME}`);
 
-      res.status(200).json({
-        status: 'success',
-        message: 'Session revoked successfully'
-      });
+      ResponseUtil.success(
+        req,
+        res,
+        'success.auth.session_revoked',
+        {
+          sessionId,
+          userId,
+          sourceTable: AUTH_TABLE_NAME
+        },
+        200
+      );
 
     } catch (error) {
       this.logger.error(`Revoke session error for table ${AUTH_TABLE_NAME}:`, error);
-      
-      res.status(500).json({
-        status: 'error',
-        message: 'Internal server error'
-      });
+
+      ResponseUtil.error(
+        req,
+        res,
+        'errors.auth.revoke_session',
+        500
+      );
     }
   };
 
@@ -575,7 +649,7 @@ export class AuthController {
   public validateSession = async (req: Request, res: Response): Promise<void> => {
     try {
       const { sessionId } = req.params;
-      
+
       if (!sessionId) {
         res.status(400).json({
           status: 'error',
@@ -597,7 +671,7 @@ export class AuthController {
 
     } catch (error) {
       this.logger.error(`Validate session error for table ${AUTH_TABLE_NAME}:`, error);
-      
+
       res.status(500).json({
         status: 'error',
         message: 'Internal server error'
@@ -614,10 +688,12 @@ export class AuthController {
     try {
       // Verificar que el usuario es admin
       if (!req.user || req.user.role !== 'admin') {
-        res.status(403).json({
-          status: 'error',
-          message: 'Admin access required'
-        });
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.auth.unauthorized_access',
+          403
+        );
         return;
       }
 
@@ -626,22 +702,26 @@ export class AuthController {
 
       this.logger.info(`Cleaned up ${cleanedCount} expired sessions from table ${AUTH_TABLE_NAME}`);
 
-      res.status(200).json({
-        status: 'success',
-        message: `Cleaned up ${cleanedCount} expired sessions`,
-        data: {
+      ResponseUtil.success(
+        req,
+        res,
+        `Cleaned up ${cleanedCount} expired sessions`,
+        {
           cleanedSessions: cleanedCount,
           sourceTable: AUTH_TABLE_NAME
-        }
-      });
+        },
+        200
+      );
 
     } catch (error) {
       this.logger.error(`Cleanup sessions error for table ${AUTH_TABLE_NAME}:`, error);
-      
-      res.status(500).json({
-        status: 'error',
-        message: 'Internal server error'
-      });
+
+      ResponseUtil.error(
+        req,
+        res,
+        'errors.auth.internal_server_error',
+        500
+      );
     }
   };
 }
