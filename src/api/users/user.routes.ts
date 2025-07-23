@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createUserController } from '../../factories/user.factory';
+import { createUserController } from '../../modules/user.factory';
 import { adminOrOwnerMiddleware, authMiddleware } from '../../core/middlewares/auth.middleware';
 import { authorizeRoles } from '../../core/middlewares/authorizeRoles.middleware';
 import { UserRole } from '../../shared/constants/roles';
@@ -7,11 +7,18 @@ import { validateBody, validateParams } from '../../core/middlewares/validationS
 import { emailSchema } from '../../shared/schemas/email.shema';
 import { uuidSchema } from '../../shared/schemas/uuid.shema';
 import { userUpdateSchema } from '../../shared/schemas/user.shema';
+import { paginationShema } from '../../shared/schemas/pagination.schema';
+import { UserModule } from './user.module';
 
 const router = Router();
-const userController = createUserController();
+const userController = UserModule.controller();
+
+router.get('/download-pdf',
+    userController.downloadPdf
+);
 
 router.post('/', 
+    validateBody(paginationShema),
     authMiddleware, 
     authorizeRoles(UserRole.ADMIN), 
     userController.getAllUsers

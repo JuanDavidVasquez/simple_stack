@@ -1,5 +1,4 @@
 import { UserRepository } from '../../api/users/user.repository';
-import { DatabaseManager } from '../../core/config/database-manager';
 import { PaginatedRequest, PaginatedResponse } from '../../shared/interfaces/pagination.interface';
 import { ApplicationError } from '../../shared/errors/application.error';
 import { z } from 'zod';
@@ -9,7 +8,9 @@ import { CreateUserData, createUserSchema, getPasswordSchemaByRole, UpdateUserDa
 import BcryptUtil from '../../shared/utils/bcrypt.util';
 import { User } from '../../core/database/entities/entities/user.entity';
 import { NotificationClientService } from '../notifications/notification-client.service';
+import { Inject, Service } from 'typedi';
 
+@Service()
 export class UserService {
   private readonly logger = setupLogger({
     ...config.logging,
@@ -17,8 +18,7 @@ export class UserService {
   });
 
   constructor(
-    private readonly databaseManager: DatabaseManager,
-    private readonly repository: typeof UserRepository,
+    private readonly repository: UserRepository,
     private readonly notificationService: NotificationClientService
   ) {
     this.logger.info('UserService initialized');
@@ -156,21 +156,21 @@ export class UserService {
       // Email de bienvenida
       this.logger.info(`Sending welcome email to ${user.email}`);
 
-      const sendEmail =await this.notificationService.send({
+      const sendEmail = await this.notificationService.send({
         type: 'email',
         to: user.email,
         language: validatedData.lenguaje,
         priority: 'normal',
         url: 'emails/welcome',
         data: {
-        appName: config.app.name,
-        userName: `${user.firstName} ${user.lastName}`,
-        firstName: user.firstName,
-        confirmationCode: verificationCode,
-        confirmationUrl: `${config.app.frontendUrl}/verify/${verificationCode}`,
-        year: new Date().getFullYear(),
-        companyLogoUrl: `${config.app.baseUrl}/images/logo.png`,
-        companyName: config.app.name,
+          appName: config.app.name,
+          userName: `${user.firstName} ${user.lastName}`,
+          firstName: user.firstName,
+          confirmationCode: verificationCode,
+          confirmationUrl: `${config.app.frontendUrl}/verify/${verificationCode}`,
+          year: new Date().getFullYear(),
+          companyLogoUrl: `${config.app.baseUrl}/images/logo.png`,
+          companyName: config.app.name,
         }
       });
 

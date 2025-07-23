@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createAuthController } from '../../factories/auth.factory';
+import { createAuthController } from '../../modules/auth.factory';
 import { authMiddleware, adminOrOwnerMiddleware } from '../../core/middlewares/auth.middleware';
 import { authorizeRoles, requireAdmin } from '../../core/middlewares/authorizeRoles.middleware';
 import { UserRole } from '../../shared/constants/roles';

@@ -1,5 +1,6 @@
 // src/services/notification-client.service.ts
 
+import { Service } from "typedi";
 import { config } from "../../core/config/env";
 import jwtUtil from "../../shared/utils/jwt.util";
 import axios, { AxiosInstance } from "axios";
@@ -10,10 +11,11 @@ interface NotificationPayload {
   data: Record<string, any>;
   language?: string;
   priority?: 'low' | 'normal' | 'high';
-  url: string; 
+  url: string;
 }
 
-class NotificationClientService {
+@Service()
+export class NotificationClientService {
   private client: AxiosInstance;
   private serviceToken: string | null = null;
   private tokenExpiresAt: Date | null = null;
@@ -77,36 +79,29 @@ class NotificationClientService {
   /**
    * Envía notificaciones en lote
    */
-  async sendBulk(notifications: NotificationPayload[]): Promise < any > {
-      try {
-        const response = await this.client.post('/notify/bulk', { notifications });
-        return response.data;
-      } catch(error) {
-        if (axios.isAxiosError(error)) {
-          console.error('Notification service error:', error.response?.data);
-          throw new Error(error.response?.data?.message || 'Failed to send bulk notifications');
-        }
-        throw error;
+  async sendBulk(notifications: NotificationPayload[]): Promise<any> {
+    try {
+      const response = await this.client.post('/notify/bulk', { notifications });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error('Notification service error:', error.response?.data);
+        throw new Error(error.response?.data?.message || 'Failed to send bulk notifications');
       }
+      throw error;
     }
+  }
 
   /**
    * Verifica estado del servicio de notificaciones
    */
-  async getStatus(): Promise < any > {
-      try {
-        const response = await this.client.get('/status');
-        return response.data;
-      } catch(error) {
-        console.error('Failed to get notification service status:', error);
-        return { status: 'unknown', error: 'Could not reach notification service' };
-      }
+  async getStatus(): Promise<any> {
+    try {
+      const response = await this.client.get('/status');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get notification service status:', error);
+      return { status: 'unknown', error: 'Could not reach notification service' };
     }
   }
-
-  // Exporta singleton
-  const notificationService = new NotificationClientService();
-export default notificationService;
-
-// Para testing
-export { NotificationClientService };
+}

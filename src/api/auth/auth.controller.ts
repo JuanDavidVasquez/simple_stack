@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { SessionService } from '../session/session.service';
 import { AUTH_TABLE_NAME } from '../../core/config/user-table.config';
 import { ResponseUtil } from '../../shared/utils/response.util';
+import { Service } from 'typedi';
 
 // Extender la interfaz Request para incluir información de usuario y sesión
 declare global {
@@ -22,6 +23,7 @@ declare global {
   }
 }
 
+@Service()
 export class AuthController {
   private readonly logger = setupLogger({
     ...config.logging,

@@ -6,7 +6,14 @@ import { LocalizedRequest } from '../../i18n/middleware';
 import { TRANSLATION_KEYS } from '../../i18n/constants';
 import { ResponseUtil } from '../../shared/utils/response.util';
 import setupLogger from '../../shared/utils/logger/index';
+import { Service } from 'typedi';
+import { BasicReports } from '../../shared/utils/pdfMake.util';
+import { Content } from 'pdfmake/interfaces';
+import path from 'path';
+import * as fs from 'fs';
+import { createInvoiceTableContent, documentStyles } from '../../shared/utils/pdf-helpers';
 
+@Service()
 export class UserController {
   private readonly logger = setupLogger({
     ...config.logging,
@@ -40,7 +47,7 @@ export class UserController {
 
       if (!result || result.data.length === 0) {
         this.logger.warn('No users found');
-        
+
         ResponseUtil.error(
           req,
           res,
@@ -51,7 +58,7 @@ export class UserController {
       }
 
       this.logger.info(`Successfully fetched ${result.data.length} users`);
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -63,7 +70,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error('Error fetching users:', error);
-      
+
       // ✅ Usar clave de error correcta
       ResponseUtil.error(
         req,
@@ -76,14 +83,14 @@ export class UserController {
 
   public createUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
     this.logger.info('Received request to create user', { body: req.body });
-   const acceptLanguage = req.headers['accept-language'] || 'en';
+    const acceptLanguage = req.headers['accept-language'] || 'en';
     try {
       const userData = req.body;
       userData.lenguaje = acceptLanguage;
       const user = await this.userService.createUser(userData);
 
       this.logger.info(`User created successfully with ID: ${user.id}`);
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -94,7 +101,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error('Error creating user:', error);
-      
+
       if (error instanceof Error) {
         if (error.message.includes('email already exists')) {
           ResponseUtil.error(
@@ -105,7 +112,7 @@ export class UserController {
           );
           return;
         }
-        
+
         if (error.message.includes('username already exists')) {
           ResponseUtil.error(
             req,
@@ -115,7 +122,7 @@ export class UserController {
           );
           return;
         }
-        
+
         if (error.message.includes('Validation failed')) {
           ResponseUtil.error(
             req,
@@ -126,7 +133,7 @@ export class UserController {
           return;
         }
       }
-      
+
       // Error genérico
       ResponseUtil.error(
         req,
@@ -146,7 +153,7 @@ export class UserController {
 
       if (!user) {
         this.logger.warn(`User with ID ${userId} not found`);
-        
+
         ResponseUtil.error(
           req,
           res,
@@ -168,7 +175,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error(`Error fetching user with ID ${userId}:`, error);
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -188,7 +195,7 @@ export class UserController {
 
       if (!updatedUser) {
         this.logger.warn(`User with ID ${userId} not found for update`);
-        
+
         ResponseUtil.error(
           req,
           res,
@@ -210,7 +217,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error(`Error updating user with ID ${userId}:`, error);
-      
+
       // Manejo de errores específicos
       if (error instanceof Error) {
         if (error.message.includes('email already exists')) {
@@ -222,7 +229,7 @@ export class UserController {
           );
           return;
         }
-        
+
         if (error.message.includes('Validation failed')) {
           ResponseUtil.error(
             req,
@@ -233,7 +240,7 @@ export class UserController {
           return;
         }
       }
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -262,7 +269,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error(`Error deleting user with ID ${userId}:`, error);
-      
+
       if (error instanceof Error && error.message.includes('not found')) {
         ResponseUtil.error(
           req,
@@ -272,7 +279,7 @@ export class UserController {
         );
         return;
       }
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -291,7 +298,7 @@ export class UserController {
 
       if (!deletedUser) {
         this.logger.warn(`User with ID ${userId} not found for soft deletion`);
-        
+
         ResponseUtil.error(
           req,
           res,
@@ -302,7 +309,7 @@ export class UserController {
       }
 
       this.logger.info(`User with ID ${userId} soft deleted successfully`);
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -313,7 +320,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error(`Error soft deleting user with ID ${userId}:`, error);
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -332,7 +339,7 @@ export class UserController {
 
       if (!user) {
         this.logger.warn(`User with email ${email} not found`);
-        
+
         ResponseUtil.error(
           req,
           res,
@@ -343,7 +350,7 @@ export class UserController {
       }
 
       this.logger.info(`User with email ${email} retrieved successfully`);
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -354,7 +361,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error(`Error fetching user with email ${email}:`, error);
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -366,13 +373,13 @@ export class UserController {
 
   public activateUserOrDeactivateUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
     const userId = req.body.id;
-    
+
     try {
       const updateStatus = await this.userService.activateUserOrDeactivateUser(userId);
-      
+
       if (!updateStatus) {
         this.logger.warn(`User with ID ${userId} not found for activation/deactivation`);
-        
+
         ResponseUtil.error(
           req,
           res,
@@ -381,14 +388,14 @@ export class UserController {
         );
         return;
       }
-      
+
       this.logger.info(`User with ID ${userId} activation/deactivation status updated successfully`);
-      
+
       // ✅ Mensaje dinámico según el estado
-      const messageKey = updateStatus.isActive 
+      const messageKey = updateStatus.isActive
         ? 'responses.user.activated'
         : 'responses.user.deactivated';
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -396,10 +403,10 @@ export class UserController {
         updateStatus,
         200
       );
-      
+
     } catch (error) {
       this.logger.error(`Error updating activation/deactivation status for user with ID ${userId}:`, error);
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -418,7 +425,7 @@ export class UserController {
 
       if (!verifiedUser) {
         this.logger.warn(`User with ID ${userId} not found for verification`);
-        
+
         ResponseUtil.error(
           req,
           res,
@@ -429,7 +436,7 @@ export class UserController {
       }
 
       this.logger.info(`User with ID ${userId} verified successfully`);
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -440,7 +447,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error(`Error verifying user with ID ${userId}:`, error);
-      
+
       if (error instanceof Error && error.message.includes('already verified')) {
         ResponseUtil.error(
           req,
@@ -450,7 +457,7 @@ export class UserController {
         );
         return;
       }
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -471,7 +478,7 @@ export class UserController {
 
       if (!updatedUser) {
         this.logger.warn(`User with ID ${userId} not found for role update`);
-        
+
         ResponseUtil.error(
           req,
           res,
@@ -482,7 +489,7 @@ export class UserController {
       }
 
       this.logger.info(`User with ID ${userId} role updated successfully`);
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -494,7 +501,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error(`Error updating role for user with ID ${userId}:`, error);
-      
+
       if (error instanceof Error && error.message.includes('Invalid role')) {
         ResponseUtil.error(
           req,
@@ -504,7 +511,7 @@ export class UserController {
         );
         return;
       }
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -520,7 +527,7 @@ export class UserController {
     try {
       const count = await this.userService.getUsersCount();
       this.logger.info(`Total users count: ${count}`);
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -531,7 +538,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error('Error fetching users count:', error);
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -550,7 +557,7 @@ export class UserController {
 
       if (!users || users.length === 0) {
         this.logger.warn(`No users found with role ${role}`);
-        
+
         ResponseUtil.error(
           req,
           res,
@@ -561,7 +568,7 @@ export class UserController {
       }
 
       this.logger.info(`Users with role ${role} retrieved successfully`);
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -573,7 +580,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error(`Error fetching users with role ${role}:`, error);
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -582,4 +589,32 @@ export class UserController {
       );
     }
   };
+
+public downloadPdf = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  this.logger.info('==================== PDF GENERATION START ====================');
+
+  try {
+    const report = new BasicReports();
+    
+    // Usa la función para crear el contenido con la tabla
+    const bodyContent = createInvoiceTableContent();
+    
+    // Pasa los estilos personalizados
+    const pdfBuffer = await report.createPdf(bodyContent, documentStyles);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=reporte-facturas.pdf');
+    res.send(pdfBuffer);
+    
+  } catch (error) {
+   this.logger.error('Error:', error);
+    
+    ResponseUtil.errorDirect(
+      res,
+      'Internal server error while generating PDF',
+      500
+    );
+  }
+};
+
 }

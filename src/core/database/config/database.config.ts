@@ -1,4 +1,11 @@
 // src/core/database/config/database.config.ts
+/**
+ * 
+ * Es la configuración base de TypeORM
+ * Define el DataSource y funciones básicas de conexión
+ * Implementación directa y simple
+ */
+
 import { DataSource } from "typeorm";
 import { config } from "../../config/env";
 import setupLogger from "../../../shared/utils/logger";

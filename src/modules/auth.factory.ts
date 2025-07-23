@@ -18,17 +18,17 @@ export const createAuthController = async () => {
   logger.info(`Creating AuthController for table: ${AUTH_TABLE_NAME}`);
   
   try {
-    const databaseManager = DatabaseManager.getInstance();
-    await databaseManager.initialize();
+    const dbManager = new DatabaseManager();
+    await dbManager.initialize();
 
     // Crear servicios
     const notificationService = new NotificationClientService();
-    const sessionService = new SessionService(databaseManager);
+    const sessionService = new SessionService(dbManager);
     
     // ✅ AuthService ahora recibe DatabaseManager y EmailService
     // El repositorio dinámico se crea internamente basado en AUTH_TABLE_NAME
-    const authService = new AuthService(databaseManager, notificationService);
-    
+    const authService = new AuthService(dbManager, notificationService);
+
     // Crear controlador
     const controller = new AuthController(authService, sessionService);
 

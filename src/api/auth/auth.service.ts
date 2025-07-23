@@ -9,7 +9,9 @@ import { Repository } from 'typeorm';
 import { AUTH_TABLE_NAME } from '../../core/config/user-table.config';
 import { NotificationClientService } from '../notifications/notification-client.service';
 import { SupportedLanguage } from '../../i18n';
+import { Service } from 'typedi';
 
+@Service()
 export class AuthService {
   private readonly logger = setupLogger({
     ...config.logging,
