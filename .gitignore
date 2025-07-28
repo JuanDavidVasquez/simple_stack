@@ -9,4 +9,4 @@ logs/
 /certs/*.key
 base.sh
 docker-compose.override.yml
-environment.stack-a44a2-firebase-adminsdk-fbsvc-6c172b1be0.json
+serviceAccountKey.json.json
