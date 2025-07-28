@@ -13,6 +13,8 @@ import { config } from "./core/config/env";
 import setupLogger from "./shared/utils/logger";
 import {apiRoutes} from "./routes";
 import { initI18n, i18nMiddleware } from './i18n/middleware';
+import { Container } from "typedi";
+import { AppModule } from "./modules";
 
 export class Server {
     private app: Application;
@@ -23,8 +25,9 @@ export class Server {
     constructor() {
         this.app = express();
         this.logger = setupLogger(config.logging);
-        this.databaseManager = DatabaseManager.getInstance();
-        
+        // ✅ REGISTRO GLOBAL
+        AppModule.register();
+        this.databaseManager = Container.get(DatabaseManager);  
     }
 
     public async initialize(): Promise<void> {

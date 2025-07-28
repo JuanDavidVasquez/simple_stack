@@ -35,7 +35,7 @@ const typeormConfig: DataSourceOptions = {
   migrationsTableName: "migrations_history",
   migrationsRun: false, // No ejecutar migraciones automáticamente
   
-  // Configuración del pool de conexiones (más conservadora para CLI)
+  // Configuración del pool de conexiones
   extra: {
     connectionLimit: 5, // Menos conexiones para operaciones CLI
     queueLimit: 0,
@@ -118,5 +118,4 @@ export const validateDatabaseConfig = (): void => {
   }
 };
 
-// Validar configuración al importar
 validateDatabaseConfig();

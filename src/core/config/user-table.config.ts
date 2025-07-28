@@ -4,13 +4,13 @@
  * guardándolos en tablas diferentes
  * 
  * Ejemplos de uso:
- * - API Clientes: USER_TABLE_NAME=clients
- * - API Panaderos: USER_TABLE_NAME=bakers  
- * - API Admin: USER_TABLE_NAME=admins
+ * - API Clientes: AUTH_TABLE_NAME=clients
+ * - API Panaderos: AUTH_TABLE_NAME=bakers  
+ * - API Admin: AUTH_TABLE_NAME=admins
  */
 
 // Obtener el nombre de la tabla desde las variables de entorno
-export const USER_TABLE_NAME = process.env.USER_TABLE_NAME || 'users';
+export const AUTH_TABLE_NAME = process.env.AUTH_TABLE_NAME || 'users';
 
 // Validar que el nombre de tabla sea válido
 function validateTableName(tableName: string): boolean {
@@ -36,14 +36,14 @@ function validateTableName(tableName: string): boolean {
 }
 
 // Validar al iniciar la aplicación
-validateTableName(USER_TABLE_NAME);
+validateTableName(AUTH_TABLE_NAME);
 
 // Log para confirmar qué tabla se está usando
-console.log(`🗄️  User table configured as: '${USER_TABLE_NAME}'`);
+console.log(`🗄️  User table configured as: '${AUTH_TABLE_NAME}'`);
 
 /**
  * Obtener el nombre de la tabla de usuarios
  */
 export function getUserTableName(): string {
-  return USER_TABLE_NAME;
+  return AUTH_TABLE_NAME;
 }

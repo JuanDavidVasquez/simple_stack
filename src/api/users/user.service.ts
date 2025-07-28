@@ -1,15 +1,16 @@
 import { UserRepository } from '../../api/users/user.repository';
-import { DatabaseManager } from '../../core/config/database-manager';
 import { PaginatedRequest, PaginatedResponse } from '../../shared/interfaces/pagination.interface';
 import { ApplicationError } from '../../shared/errors/application.error';
 import { z } from 'zod';
 import setupLogger from '../../shared/utils/logger';
 import { config } from '../../core/config/env';
-import { User } from '../../core/database/entities/user.entity';
 import { CreateUserData, createUserSchema, getPasswordSchemaByRole, UpdateUserData, updateUserSchema } from '../../shared/schemas/password.schema';
 import BcryptUtil from '../../shared/utils/bcrypt.util';
-import { EmailService } from '../../templates/email.service';
+import { User } from '../../core/database/entities/entities/user.entity';
+import { NotificationClientService } from '../notifications/notification-client.service';
+import { Inject, Service } from 'typedi';
 
+@Service()
 export class UserService {
   private readonly logger = setupLogger({
     ...config.logging,
@@ -17,9 +18,8 @@ export class UserService {
   });
 
   constructor(
-    private readonly databaseManager: DatabaseManager,
-    private readonly repository: typeof UserRepository,
-    private readonly emailService: EmailService
+    private readonly repository: UserRepository,
+    private readonly notificationService: NotificationClientService
   ) {
     this.logger.info('UserService initialized');
   }
@@ -154,10 +154,14 @@ export class UserService {
 
 
       // Email de bienvenida
-      await this.emailService.sendEmail({
+      this.logger.info(`Sending welcome email to ${user.email}`);
+
+      const sendEmail = await this.notificationService.send({
+        type: 'email',
         to: user.email,
-        template: 'welcome',
-        language: userData.lenguaje || 'en',
+        language: validatedData.lenguaje,
+        priority: 'normal',
+        url: 'emails/welcome',
         data: {
           appName: config.app.name,
           userName: `${user.firstName} ${user.lastName}`,
@@ -170,6 +174,11 @@ export class UserService {
         }
       });
 
+      if (!sendEmail) {
+        this.logger.warn(`Failed to send welcome email to ${user.email}`);
+      } else {
+        this.logger.info(`Welcome email sent successfully to ${user.email}`);
+      }
 
       return userResponse as User;
 

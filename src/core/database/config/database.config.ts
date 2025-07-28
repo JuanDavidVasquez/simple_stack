@@ -1,7 +1,15 @@
 // src/core/database/config/database.config.ts
+/**
+ * 
+ * Es la configuración base de TypeORM
+ * Define el DataSource y funciones básicas de conexión
+ * Implementación directa y simple
+ */
+
 import { DataSource } from "typeorm";
 import { config } from "../../config/env";
 import setupLogger from "../../../shared/utils/logger";
+import * as Entities from '../entities';
 
 const logger = setupLogger({
   ...config.logging,
@@ -26,9 +34,7 @@ export const AppDataSource = new DataSource({
   timezone: config.database.timezone,
   
   // Rutas de entidades, migraciones y subscribers
-  entities: [
-    __dirname + "/../entities/**/*.entity{.ts,.js}",
-  ],
+  entities: Object.values(Entities) as (Function | string | import("typeorm").EntitySchema<any>)[],
   migrations: [
     __dirname + "/../migrations/**/*{.ts,.js}",
   ],

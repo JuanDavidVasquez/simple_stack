@@ -320,6 +320,57 @@ class JwtUtil {
   public decodeToken(token: string): any {
     return jwt.decode(token);
   }
+
+  /**
+ * Genera un token para comunicación entre servicios
+ */
+public generateServiceToken(service: string, permissions: string[]): string {
+  try {
+    const payload = {
+      service,
+      permissions,
+      type: 'service',
+      issuedAt: new Date().toISOString(),
+      nonce: crypto.randomBytes(16).toString('hex'),
+    };
+
+    const token = jwt.sign(payload, this.accessTokenSecret, {
+      expiresIn: '5m', // Token de corta duración para mayor seguridad
+      algorithm: 'HS256',
+    });
+
+    logger.info(`Service token generated for ${service}`);
+    return token;
+  } catch (error) {
+    logger.error('Error generating service token:', error);
+    throw new Error('Failed to generate service token');
+  }
+}
+
+/**
+ * Verifica un token de servicio
+ */
+public verifyServiceToken(token: string): { service: string; permissions: string[] } {
+  try {
+    const decoded = jwt.verify(token, this.accessTokenSecret) as any;
+    
+    if (decoded.type !== 'service') {
+      throw new Error('Invalid token type - not a service token');
+    }
+
+    return {
+      service: decoded.service,
+      permissions: decoded.permissions || [],
+    };
+  } catch (error) {
+    if (error instanceof jwt.TokenExpiredError) {
+      throw new Error('Service token expired');
+    }
+    
+    logger.error('Error verifying service token:', error);
+    throw new Error('Invalid service token');
+  }
+}
 }
 
 export default new JwtUtil();

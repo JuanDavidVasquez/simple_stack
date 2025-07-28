@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { BcryptUtil } from '../utils/bcrypt.util';
+import { CommonPatterns } from './commonPatterns.util';
 
 /**
  * Schema base para validación de contraseñas
@@ -78,15 +79,7 @@ export const strongPasswordSchema = z
   })
   .refine((password: string) => {
     // Verificar patrones comunes
-    const commonPatterns = [
-      /123456/,
-      /password/i,
-      /qwerty/i,
-      /admin/i,
-      /letmein/i,
-      /welcome/i,
-    ];
-    return !commonPatterns.some(pattern => pattern.test(password));
+   return !CommonPatterns.some(pattern => pattern.test(password));
   }, {
     message: 'Password contains common patterns and is not secure',
   })

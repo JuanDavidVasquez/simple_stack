@@ -97,9 +97,15 @@ export const config = {
   api: {
     prefix: process.env.API_PREFIX || "/api/v1",
     rateLimit: parseInt(process.env.API_RATE_LIMIT || "100", 10),
-    frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+    frontendUrl: process.env.FRONTEND_URL || "https://localhost:3000",
     supportEmail: process.env.SUPPORT_EMAIL || "suport@onelessonperday.co",
     rateLimitWindow: process.env.API_RATE_LIMIT_WINDOW || "1m",
+  },
+
+  notificationApi: {
+    url: process.env.NOTIFICATION_API_URL || "http://localhost:5000/api/v1/",
+    serviceToken: process.env.NOTIFICATION_API_SERVICE_TOKEN || "default_service_token",
+    serviceTokenExpiresIn: process.env.NOTIFICATION_API_SERVICE_TOKEN_EXPIRES_IN || "5m",
   },
 
   // Nueva sección para tareas programadas
