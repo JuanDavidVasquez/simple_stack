@@ -1,0 +1,44 @@
+{
+  "juan@gmail.com": {
+    "email": "juan@gmail.com",
+    "encryptedPassword": "700e25ee57f81ac9e82d54ca3f677e42f45b7fd2c2c53f5ca50636479924876a62acd41531c4d824d68be13bdded592f4a",
+    "iv": "3d7f61a27b24a78c5ed56d7db0b6d974",
+    "authTag": "f1b7267d575b3495be3b468601274d88",
+    "deviceName": "Insomnia Test"
+  },
+  "maria@gmail.com": {
+    "email": "maria@gmail.com",
+    "encryptedPassword": "ebada90fb4312db9a3d0e538fb704ab6b68d13ba6ac9813b6f53a298fbeec7e7fea05ac68e39837403a243c166",
+    "iv": "bd6a97c9d057ab6082bc608743a07f76",
+    "authTag": "d25cbd33cb84cf1b016ed1e1fbf9c9e3",
+    "deviceName": "Insomnia Test"
+  },
+  "admin@example.com": {
+    "email": "admin@example.com",
+    "encryptedPassword": "f1d8e3a1a9503834314d1909c01badbef53900bab14ea6f6b132d3432855ffe57bea519c9700942b58cc9045e6",
+    "iv": "708e1fa181a133dbce34d09246b2cf40",
+    "authTag": "e6626a02217a277ee0382882a96c3b7e",
+    "deviceName": "Insomnia Test"
+  },
+  "test@test.com": {
+    "email": "test@test.com",
+    "encryptedPassword": "c31d399fea5389b8fff20462db0bc0fb9fa0c0fe6f12eebaed8e0b88276f0bb78f4b731dc468b28df131fff0",
+    "iv": "cb14e244511a9f9265acd76d80598a64",
+    "authTag": "c0aa2b9f33f10630b72c0ad75e31339f",
+    "deviceName": "Insomnia Test"
+  },
+  "doctor@clinic.com": {
+    "email": "doctor@clinic.com",
+    "encryptedPassword": "d94fee252d1f029d8aaf7b7c5ee0032ee4a376368daa63e34516c4ef14b3443ce6831fb383233e1d3f977b19f2ab",
+    "iv": "5c553334a3245941f8d8827939570bfb",
+    "authTag": "9f815208465c25ce472dd892c1a629b3",
+    "deviceName": "Insomnia Test"
+  },
+  "paciente@email.com": {
+    "email": "paciente@email.com",
+    "encryptedPassword": "b39061f4d8b01ce7da3ff95063984136fb5263db5403994193256a910d0ebe0acf6631c2b50c132360d9bc98a1a1e016",
+    "iv": "8f402d8c2d0f6961065399a7053f6d35",
+    "authTag": "884e10af23eb5175b7e45c7db38b0064",
+    "deviceName": "Insomnia Test"
+  }
+}

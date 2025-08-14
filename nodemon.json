@@ -1,9 +1,21 @@
 {
-  "watch": ["src"],
-  "ext": "ts,json",
-  "ignore": ["src/**/*.spec.ts"],
+  "watch": ["src", "environments"],
+  "ext": "ts,json,env",
+  "ignore": [
+    "src/**/*.spec.ts",
+    "src/**/*.test.ts",
+    "dist",
+    "node_modules",
+    "logs",
+    "test-payloads"
+  ],
   "exec": "ts-node src/index.ts",
   "env": {
     "NODE_ENV": "local"
-  }
+  },
+  "delay": 1000,
+  "verbose": true,
+  "restartable": "rs",
+  "colours": true,
+  "legacyWatch": false
 }

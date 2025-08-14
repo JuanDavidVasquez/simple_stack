@@ -3,6 +3,7 @@ import { createAuthController } from '../../modules/auth.factory';
 import { authMiddleware, adminOrOwnerMiddleware } from '../../core/middlewares/auth.middleware';
 import { authorizeRoles, requireAdmin } from '../../core/middlewares/authorizeRoles.middleware';
 import { UserRole } from '../../shared/constants/roles';
+import { passwordEncryptionMiddleware } from '../../core/middlewares/encryption.middleware';
 
 
 export const createAuthRouter = async () => {
@@ -13,7 +14,9 @@ export const createAuthRouter = async () => {
   // RUTAS PÚBLICAS (sin autenticación)
   // ===============================
  
-  router.post('/login', authController.login);
+  router.post('/login',
+    passwordEncryptionMiddleware(),
+    authController.login);
   router.post('/refresh', authController.refreshToken);
   router.post('/reset-password', authController.resetPassword);
   router.get('/login-status', authController.checkLoginStatus);

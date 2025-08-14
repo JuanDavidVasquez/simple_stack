@@ -41,6 +41,7 @@ export class AuthController {
    * Login de usuario con gestión de sesiones
    */
   public login = async (req: Request, res: Response): Promise<void> => {
+    this.logger.info(`*******************************************************`);
     this.logger.info('Received login request', {
       email: req.body.email,
       table: AUTH_TABLE_NAME,
@@ -393,9 +394,6 @@ export class AuthController {
       res.status(200).json({
         status: 'success',
         message: 'If the email exists, a password reset has been sent',
-        ...(config.app.env === 'local' && result.temporaryPassword && {
-          temporaryPassword: result.temporaryPassword
-        })
       });
 
       ResponseUtil.success(
