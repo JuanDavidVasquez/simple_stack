@@ -7,11 +7,6 @@ import { TRANSLATION_KEYS } from '../../i18n/constants';
 import { ResponseUtil } from '../../shared/utils/response.util';
 import setupLogger from '../../shared/utils/logger/index';
 import { Service } from 'typedi';
-import { BasicReports } from '../../shared/utils/pdfMake.util';
-import { Content } from 'pdfmake/interfaces';
-import path from 'path';
-import * as fs from 'fs';
-import { createInvoiceTableContent, documentStyles } from '../../shared/utils/pdf-helpers';
 
 @Service()
 export class UserController {
@@ -24,7 +19,7 @@ export class UserController {
     this.logger.info('UserController initialized');
   }
 
-  public getAllUsers = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  getAllUsers = async (req: LocalizedRequest, res: Response): Promise<void> => {
     this.logger.info('Received request to get all users', { body: req.body });
     try {
       const {
@@ -81,7 +76,7 @@ export class UserController {
     }
   };
 
-  public createUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  createUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
     this.logger.info('Received request to create user', { body: req.body });
     const acceptLanguage = req.headers['accept-language'] || 'en';
     try {
@@ -144,7 +139,7 @@ export class UserController {
     }
   };
 
-  public getUserById = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  getUserById = async (req: LocalizedRequest, res: Response): Promise<void> => {
     const userId = req.params.id;
     this.logger.info(`Received request to get user by ID: ${userId}`);
 
@@ -185,8 +180,8 @@ export class UserController {
     }
   };
 
-  public updateUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
-    const userId = req.params.id;
+  updateUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
+    const userId = req.user?.userId || req.params.id;
     this.logger.info(`Received request to update user with ID: ${userId}`, { body: req.body });
 
     try {
@@ -250,7 +245,7 @@ export class UserController {
     }
   };
 
-  public deleteUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  deleteUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
     const userId = req.params.id;
     this.logger.info(`Received request to delete user with ID: ${userId}`);
 
@@ -289,7 +284,7 @@ export class UserController {
     }
   };
 
-  public softDeleteUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  softDeleteUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
     const userId = req.params.id;
     this.logger.info(`Received request to soft delete user with ID: ${userId}`);
 
@@ -330,7 +325,7 @@ export class UserController {
     }
   };
 
-  public getUserByEmail = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  getUserByEmail = async (req: LocalizedRequest, res: Response): Promise<void> => {
     const email = req.params.email;
     this.logger.info(`Received request to get user by email: ${email}`);
 
@@ -371,7 +366,7 @@ export class UserController {
     }
   };
 
-  public activateUserOrDeactivateUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  activateUserOrDeactivateUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
     const userId = req.body.id;
 
     try {
@@ -416,8 +411,15 @@ export class UserController {
     }
   };
 
-  public verifyUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
-    const userId = req.body.id;
+ verifyUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
+    // El userId ya está disponible en req.user gracias al authMiddleware
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      ResponseUtil.error(req, res, 'errors.auth.token_required', 401);
+      return;
+    }
+
     this.logger.info(`Received request to verify user with ID: ${userId}`);
 
     try {
@@ -425,49 +427,26 @@ export class UserController {
 
       if (!verifiedUser) {
         this.logger.warn(`User with ID ${userId} not found for verification`);
-
-        ResponseUtil.error(
-          req,
-          res,
-          'errors.user.not_found',
-          404
-        );
+        ResponseUtil.error(req, res, 'errors.user.not_found', 404);
         return;
       }
 
       this.logger.info(`User with ID ${userId} verified successfully`);
-
-      ResponseUtil.success(
-        req,
-        res,
-        'responses.user.verified',
-        verifiedUser,
-        200
-      );
+      ResponseUtil.success(req, res, 'responses.user.verified', verifiedUser, 200);
 
     } catch (error) {
       this.logger.error(`Error verifying user with ID ${userId}:`, error);
 
       if (error instanceof Error && error.message.includes('already verified')) {
-        ResponseUtil.error(
-          req,
-          res,
-          'errors.user.already_verified',
-          400
-        );
+        ResponseUtil.error(req, res, 'errors.user.already_verified', 400);
         return;
       }
 
-      ResponseUtil.error(
-        req,
-        res,
-        'errors.general.internal_server',
-        500
-      );
+      ResponseUtil.error(req, res, 'errors.general.internal_server', 500);
     }
   };
 
-  public updateUserRole = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  updateUserRole = async (req: LocalizedRequest, res: Response): Promise<void> => {
     const userId = req.params.id;
     const { role } = req.body;
 
@@ -521,7 +500,7 @@ export class UserController {
     }
   };
 
-  public getUsersCount = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  getUsersCount = async (req: LocalizedRequest, res: Response): Promise<void> => {
     this.logger.info('Received request to get users count');
 
     try {
@@ -548,7 +527,7 @@ export class UserController {
     }
   };
 
-  public getUsersByRole = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  getUsersByRole = async (req: LocalizedRequest, res: Response): Promise<void> => {
     const role = req.params.role;
     this.logger.info(`Received request to get users by role: ${role}`);
 
@@ -589,32 +568,4 @@ export class UserController {
       );
     }
   };
-
-public downloadPdf = async (req: LocalizedRequest, res: Response): Promise<void> => {
-  this.logger.info('==================== PDF GENERATION START ====================');
-
-  try {
-    const report = new BasicReports();
-    
-    // Usa la función para crear el contenido con la tabla
-    const bodyContent = createInvoiceTableContent();
-    
-    // Pasa los estilos personalizados
-    const pdfBuffer = await report.createPdf(bodyContent, documentStyles);
-    
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename=reporte-facturas.pdf');
-    res.send(pdfBuffer);
-    
-  } catch (error) {
-   this.logger.error('Error:', error);
-    
-    ResponseUtil.errorDirect(
-      res,
-      'Internal server error while generating PDF',
-      500
-    );
-  }
-};
-
 }

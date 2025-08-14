@@ -24,7 +24,7 @@ export class UserService {
     this.logger.info('UserService initialized');
   }
 
-  public async getAllUsers(params: PaginatedRequest): Promise<PaginatedResponse<User>> {
+  async getAllUsers(params: PaginatedRequest): Promise<PaginatedResponse<User>> {
     this.logger.info('Fetching all users with params:', params);
     try {
       const result = await this.repository.getAllUsers(params);
@@ -43,7 +43,7 @@ export class UserService {
     }
   }
 
-  public async getUserById(id: string): Promise<User> {
+  async getUserById(id: string): Promise<User> {
     this.logger.info(`Fetching user by id: ${id}`);
 
     try {
@@ -65,7 +65,7 @@ export class UserService {
     }
   }
 
-  public async getUserByEmail(email: string): Promise<User> {
+  async getUserByEmail(email: string): Promise<User> {
     this.logger.info(`Fetching user by email: ${email}`);
 
     try {
@@ -89,7 +89,7 @@ export class UserService {
     }
   }
 
-  public async createUser(userData: CreateUserData): Promise<User> {
+  async createUser(userData: CreateUserData): Promise<User> {
     this.logger.info('Creating user with data:', { ...userData, password: '[HIDDEN]' });
 
     try {
@@ -193,7 +193,7 @@ export class UserService {
     }
   }
 
-  public async updateUser(id: string, updateData: UpdateUserData): Promise<User> {
+  async updateUser(id: string, updateData: UpdateUserData): Promise<User> {
     this.logger.info(`Updating user ${id}`, {
       ...updateData,
       password: updateData.password ? '[HIDDEN]' : undefined
@@ -277,7 +277,7 @@ export class UserService {
     }
   }
 
-  public async deleteUser(id: string): Promise<void> {
+  async deleteUser(id: string): Promise<void> {
     this.logger.info(`Deleting user ${id}`);
 
     try {
@@ -298,7 +298,7 @@ export class UserService {
     }
   }
 
-  public async activateUserOrDeactivateUser(id: string): Promise<User> {
+  async activateUserOrDeactivateUser(id: string): Promise<User> {
     this.logger.info(`Activating user ${id}`);
     try {
       const user = await this.repository.findOne({ where: { id } });
@@ -332,7 +332,7 @@ export class UserService {
     }
   }
 
-  public async verifyUser(id: string): Promise<User> {
+  async verifyUser(id: string): Promise<User> {
     this.logger.info(`Verifying user ${id}`);
 
     try {
@@ -370,7 +370,7 @@ export class UserService {
     }
   }
 
-  public async updateUserRole(id: string, newRole: string): Promise<User> {
+  async updateUserRole(id: string, newRole: string): Promise<User> {
     this.logger.info(`Updating role for user ${id} to ${newRole}`);
 
     try {
@@ -413,7 +413,7 @@ export class UserService {
     }
   }
 
-  public async getUsersCount(): Promise<number> {
+  async getUsersCount(): Promise<number> {
     this.logger.info('Getting total users count');
 
     try {
@@ -428,7 +428,7 @@ export class UserService {
     }
   }
 
-  public async getUsersByRole(role: string): Promise<User[]> {
+  async getUsersByRole(role: string): Promise<User[]> {
     this.logger.info(`Getting users by role: ${role}`);
 
     try {
@@ -451,7 +451,7 @@ export class UserService {
     }
   }
 
-  public async softDeleteUser(id: string): Promise<User> {
+  async softDeleteUser(id: string): Promise<User> {
     this.logger.info(`Soft deleting user ${id}`);
 
     try {

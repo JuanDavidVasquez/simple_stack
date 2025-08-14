@@ -13,10 +13,6 @@ import { UserModule } from './user.module';
 const router = Router();
 const userController = UserModule.controller();
 
-router.get('/download-pdf',
-    userController.downloadPdf
-);
-
 router.post('/', 
     validateBody(paginationShema),
     authMiddleware, 

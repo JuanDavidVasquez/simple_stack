@@ -13,7 +13,7 @@ import * as path from 'path';
 
 // ✅ CONFIGURACIÓN CORREGIDA PARA HTTPS
 const USERS = [
-  { email: "juan@gmail.com", password: "zGZSgPN9IPGk" },
+  { email: "juan@gmail.com", password: "WXFMLk%BE48H" },
   { email: "maria@gmail.com", password: "maria456" },
   { email: "admin@example.com", password: "admin789" },
   { email: "test@test.com", password: "test123" },
