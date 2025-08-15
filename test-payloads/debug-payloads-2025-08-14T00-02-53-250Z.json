@@ -1,0 +1,30 @@
+{
+  "juan@gmail.com": {
+    "email": "juan@gmail.com",
+    "encryptedPassword": "ff7d4ede204ed827c07789ff7bb54e5e3fdbb563b76c98029a0e99b64da930f9f2cb236dad2ca8aa31230c556d662fb873",
+    "iv": "1646089d038a36459fde868a7588d24b",
+    "authTag": "223aae205d8e31d78dcf4e3d66edd972",
+    "deviceName": "Debug Test Device"
+  },
+  "maria@gmail.com": {
+    "email": "maria@gmail.com",
+    "encryptedPassword": "d955c4448d0d884ee75de71fdcc25066b6ba9c1af847a62fab3fc470bd08e64648f1eb851796771a820465a541",
+    "iv": "394ff966e25b2ba695893a13aec0eb56",
+    "authTag": "c41496cd0826a23fe8d27d79cfdc8c23",
+    "deviceName": "Debug Test Device"
+  },
+  "admin@example.com": {
+    "email": "admin@example.com",
+    "encryptedPassword": "d7f0d4a17f763c5dc55a34fd786aada70bb44a3200f3cd67e4bcc6c9a20656a0577f29245643ed44d3d8224c18",
+    "iv": "d7b58c6a7c15bc96dbf84660e1b85e91",
+    "authTag": "169b179720cd3a7007ac6a32df2ce530",
+    "deviceName": "Debug Test Device"
+  },
+  "test@test.com": {
+    "email": "test@test.com",
+    "encryptedPassword": "ff55dc6cc217789bf36955ff18e4d6e9234a7a030853c6feb07666c211adbb6549a849bde34f11d0b014deb9",
+    "iv": "8a1d1bffaff59b0e63d311d0de8a3051",
+    "authTag": "c5a98ad6203bdcfecc476dabc7f3ddb5",
+    "deviceName": "Debug Test Device"
+  }
+}

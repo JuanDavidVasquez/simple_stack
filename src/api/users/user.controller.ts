@@ -6,7 +6,9 @@ import { LocalizedRequest } from '../../i18n/middleware';
 import { TRANSLATION_KEYS } from '../../i18n/constants';
 import { ResponseUtil } from '../../shared/utils/response.util';
 import setupLogger from '../../shared/utils/logger/index';
+import { Service } from 'typedi';
 
+@Service()
 export class UserController {
   private readonly logger = setupLogger({
     ...config.logging,
@@ -17,7 +19,7 @@ export class UserController {
     this.logger.info('UserController initialized');
   }
 
-  public getAllUsers = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  getAllUsers = async (req: LocalizedRequest, res: Response): Promise<void> => {
     this.logger.info('Received request to get all users', { body: req.body });
     try {
       const {
@@ -40,8 +42,7 @@ export class UserController {
 
       if (!result || result.data.length === 0) {
         this.logger.warn('No users found');
-        
-        // ✅ Usar clave de error correcta para "no encontrado"
+
         ResponseUtil.error(
           req,
           res,
@@ -52,7 +53,7 @@ export class UserController {
       }
 
       this.logger.info(`Successfully fetched ${result.data.length} users`);
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -64,7 +65,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error('Error fetching users:', error);
-      
+
       // ✅ Usar clave de error correcta
       ResponseUtil.error(
         req,
@@ -75,16 +76,16 @@ export class UserController {
     }
   };
 
-  public createUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  createUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
     this.logger.info('Received request to create user', { body: req.body });
-   const acceptLanguage = req.headers['accept-language'] || 'en';
+    const acceptLanguage = req.headers['accept-language'] || 'en';
     try {
       const userData = req.body;
       userData.lenguaje = acceptLanguage;
       const user = await this.userService.createUser(userData);
 
       this.logger.info(`User created successfully with ID: ${user.id}`);
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -95,7 +96,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error('Error creating user:', error);
-      
+
       if (error instanceof Error) {
         if (error.message.includes('email already exists')) {
           ResponseUtil.error(
@@ -106,7 +107,7 @@ export class UserController {
           );
           return;
         }
-        
+
         if (error.message.includes('username already exists')) {
           ResponseUtil.error(
             req,
@@ -116,7 +117,7 @@ export class UserController {
           );
           return;
         }
-        
+
         if (error.message.includes('Validation failed')) {
           ResponseUtil.error(
             req,
@@ -127,7 +128,7 @@ export class UserController {
           return;
         }
       }
-      
+
       // Error genérico
       ResponseUtil.error(
         req,
@@ -138,7 +139,7 @@ export class UserController {
     }
   };
 
-  public getUserById = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  getUserById = async (req: LocalizedRequest, res: Response): Promise<void> => {
     const userId = req.params.id;
     this.logger.info(`Received request to get user by ID: ${userId}`);
 
@@ -147,7 +148,7 @@ export class UserController {
 
       if (!user) {
         this.logger.warn(`User with ID ${userId} not found`);
-        
+
         ResponseUtil.error(
           req,
           res,
@@ -169,7 +170,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error(`Error fetching user with ID ${userId}:`, error);
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -179,8 +180,8 @@ export class UserController {
     }
   };
 
-  public updateUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
-    const userId = req.params.id;
+  updateUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
+    const userId = req.user?.userId || req.params.id;
     this.logger.info(`Received request to update user with ID: ${userId}`, { body: req.body });
 
     try {
@@ -189,7 +190,7 @@ export class UserController {
 
       if (!updatedUser) {
         this.logger.warn(`User with ID ${userId} not found for update`);
-        
+
         ResponseUtil.error(
           req,
           res,
@@ -211,7 +212,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error(`Error updating user with ID ${userId}:`, error);
-      
+
       // Manejo de errores específicos
       if (error instanceof Error) {
         if (error.message.includes('email already exists')) {
@@ -223,7 +224,7 @@ export class UserController {
           );
           return;
         }
-        
+
         if (error.message.includes('Validation failed')) {
           ResponseUtil.error(
             req,
@@ -234,7 +235,7 @@ export class UserController {
           return;
         }
       }
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -244,7 +245,7 @@ export class UserController {
     }
   };
 
-  public deleteUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  deleteUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
     const userId = req.params.id;
     this.logger.info(`Received request to delete user with ID: ${userId}`);
 
@@ -263,7 +264,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error(`Error deleting user with ID ${userId}:`, error);
-      
+
       if (error instanceof Error && error.message.includes('not found')) {
         ResponseUtil.error(
           req,
@@ -273,7 +274,7 @@ export class UserController {
         );
         return;
       }
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -283,7 +284,7 @@ export class UserController {
     }
   };
 
-  public softDeleteUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  softDeleteUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
     const userId = req.params.id;
     this.logger.info(`Received request to soft delete user with ID: ${userId}`);
 
@@ -292,7 +293,7 @@ export class UserController {
 
       if (!deletedUser) {
         this.logger.warn(`User with ID ${userId} not found for soft deletion`);
-        
+
         ResponseUtil.error(
           req,
           res,
@@ -303,7 +304,7 @@ export class UserController {
       }
 
       this.logger.info(`User with ID ${userId} soft deleted successfully`);
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -314,7 +315,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error(`Error soft deleting user with ID ${userId}:`, error);
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -324,7 +325,7 @@ export class UserController {
     }
   };
 
-  public getUserByEmail = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  getUserByEmail = async (req: LocalizedRequest, res: Response): Promise<void> => {
     const email = req.params.email;
     this.logger.info(`Received request to get user by email: ${email}`);
 
@@ -333,7 +334,7 @@ export class UserController {
 
       if (!user) {
         this.logger.warn(`User with email ${email} not found`);
-        
+
         ResponseUtil.error(
           req,
           res,
@@ -344,7 +345,7 @@ export class UserController {
       }
 
       this.logger.info(`User with email ${email} retrieved successfully`);
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -355,7 +356,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error(`Error fetching user with email ${email}:`, error);
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -365,15 +366,15 @@ export class UserController {
     }
   };
 
-  public activateUserOrDeactivateUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  activateUserOrDeactivateUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
     const userId = req.body.id;
-    
+
     try {
       const updateStatus = await this.userService.activateUserOrDeactivateUser(userId);
-      
+
       if (!updateStatus) {
         this.logger.warn(`User with ID ${userId} not found for activation/deactivation`);
-        
+
         ResponseUtil.error(
           req,
           res,
@@ -382,14 +383,14 @@ export class UserController {
         );
         return;
       }
-      
+
       this.logger.info(`User with ID ${userId} activation/deactivation status updated successfully`);
-      
+
       // ✅ Mensaje dinámico según el estado
-      const messageKey = updateStatus.isActive 
+      const messageKey = updateStatus.isActive
         ? 'responses.user.activated'
         : 'responses.user.deactivated';
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -397,10 +398,10 @@ export class UserController {
         updateStatus,
         200
       );
-      
+
     } catch (error) {
       this.logger.error(`Error updating activation/deactivation status for user with ID ${userId}:`, error);
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -410,8 +411,15 @@ export class UserController {
     }
   };
 
-  public verifyUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
-    const userId = req.body.id;
+ verifyUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
+    // El userId ya está disponible en req.user gracias al authMiddleware
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      ResponseUtil.error(req, res, 'errors.auth.token_required', 401);
+      return;
+    }
+
     this.logger.info(`Received request to verify user with ID: ${userId}`);
 
     try {
@@ -419,49 +427,26 @@ export class UserController {
 
       if (!verifiedUser) {
         this.logger.warn(`User with ID ${userId} not found for verification`);
-        
-        ResponseUtil.error(
-          req,
-          res,
-          'errors.user.not_found',
-          404
-        );
+        ResponseUtil.error(req, res, 'errors.user.not_found', 404);
         return;
       }
 
       this.logger.info(`User with ID ${userId} verified successfully`);
-      
-      ResponseUtil.success(
-        req,
-        res,
-        'responses.user.verified',
-        verifiedUser,
-        200
-      );
+      ResponseUtil.success(req, res, 'responses.user.verified', verifiedUser, 200);
 
     } catch (error) {
       this.logger.error(`Error verifying user with ID ${userId}:`, error);
-      
+
       if (error instanceof Error && error.message.includes('already verified')) {
-        ResponseUtil.error(
-          req,
-          res,
-          'errors.user.already_verified',
-          400
-        );
+        ResponseUtil.error(req, res, 'errors.user.already_verified', 400);
         return;
       }
-      
-      ResponseUtil.error(
-        req,
-        res,
-        'errors.general.internal_server',
-        500
-      );
+
+      ResponseUtil.error(req, res, 'errors.general.internal_server', 500);
     }
   };
 
-  public updateUserRole = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  updateUserRole = async (req: LocalizedRequest, res: Response): Promise<void> => {
     const userId = req.params.id;
     const { role } = req.body;
 
@@ -472,7 +457,7 @@ export class UserController {
 
       if (!updatedUser) {
         this.logger.warn(`User with ID ${userId} not found for role update`);
-        
+
         ResponseUtil.error(
           req,
           res,
@@ -483,7 +468,7 @@ export class UserController {
       }
 
       this.logger.info(`User with ID ${userId} role updated successfully`);
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -495,7 +480,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error(`Error updating role for user with ID ${userId}:`, error);
-      
+
       if (error instanceof Error && error.message.includes('Invalid role')) {
         ResponseUtil.error(
           req,
@@ -505,7 +490,7 @@ export class UserController {
         );
         return;
       }
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -515,13 +500,13 @@ export class UserController {
     }
   };
 
-  public getUsersCount = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  getUsersCount = async (req: LocalizedRequest, res: Response): Promise<void> => {
     this.logger.info('Received request to get users count');
 
     try {
       const count = await this.userService.getUsersCount();
       this.logger.info(`Total users count: ${count}`);
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -532,7 +517,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error('Error fetching users count:', error);
-      
+
       ResponseUtil.error(
         req,
         res,
@@ -542,7 +527,7 @@ export class UserController {
     }
   };
 
-  public getUsersByRole = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  getUsersByRole = async (req: LocalizedRequest, res: Response): Promise<void> => {
     const role = req.params.role;
     this.logger.info(`Received request to get users by role: ${role}`);
 
@@ -551,7 +536,7 @@ export class UserController {
 
       if (!users || users.length === 0) {
         this.logger.warn(`No users found with role ${role}`);
-        
+
         ResponseUtil.error(
           req,
           res,
@@ -562,7 +547,7 @@ export class UserController {
       }
 
       this.logger.info(`Users with role ${role} retrieved successfully`);
-      
+
       ResponseUtil.success(
         req,
         res,
@@ -574,7 +559,7 @@ export class UserController {
 
     } catch (error) {
       this.logger.error(`Error fetching users with role ${role}:`, error);
-      
+
       ResponseUtil.error(
         req,
         res,

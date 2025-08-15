@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppDataSource } from '../database/config/database.config';
-import { User } from '../database/entities/user.entity';
 import { UserRole } from '../../shared/constants/roles';
+import { User } from '../database/entities/entities/user.entity';
+import { ResponseUtil } from '../../shared/utils/response.util';
 
 // Extiende la interfaz Request para incluir información del usuario y roles
 declare module 'express-serve-static-core' {
@@ -37,10 +38,12 @@ export const authorizeRoles = (...allowedRoles: (UserRole | string | (UserRole |
     try {
       // Verificar que el usuario esté autenticado
       if (!req.user || !req.user.userId) {
-        res.status(401).json({
-          success: false,
-          message: 'Usuario no autenticado'
-        });
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.general.unauthenticated',
+          401
+        );
         return;
       }
 
@@ -63,12 +66,16 @@ export const authorizeRoles = (...allowedRoles: (UserRole | string | (UserRole |
         const hasPermission = normalizedRoles.includes(userRole);
 
         if (!hasPermission) {
-          res.status(403).json({
-            success: false,
-            message: 'No tienes permisos para acceder a este recurso',
-            required_roles: normalizedRoles,
-            user_role: userRole
-          });
+          ResponseUtil.error(
+            req,
+            res,
+              'errors.general.forbidden',
+            403,
+            {
+              required_roles: normalizedRoles,
+              user_role: userRole
+            }
+          )
           return;
         }
 
