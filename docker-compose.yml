@@ -64,8 +64,25 @@ services:
     depends_on:
       - redis
 
+  minio:
+    image: minio/minio:latest
+    container_name: plantilla_node_2025_minio
+    restart: always
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: 2025*plantillA
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - microservices
+
 volumes:
   mysql_data:
+  minio_data:
 
 networks:
   microservices:
