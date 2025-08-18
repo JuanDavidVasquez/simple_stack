@@ -108,6 +108,10 @@ export const config = {
     serviceTokenExpiresIn: process.env.NOTIFICATION_API_SERVICE_TOKEN_EXPIRES_IN || "5m",
   },
 
+  fileApi: {
+    url: process.env.FILE_API_URL || "http://localhost:6000/api/",
+  },
+
   security: {
     encryptionKey: process.env.ENCRYPTION_KEY || "default_encryption_key",
   },

@@ -4,15 +4,8 @@ import { Service } from "typedi";
 import { config } from "../../core/config/env";
 import jwtUtil from "../../shared/utils/jwt.util";
 import axios, { AxiosInstance } from "axios";
+import { NotificationPayload } from "../../shared/interfaces/notification.interface";
 
-interface NotificationPayload {
-  type: 'email' | 'sms' | 'push';
-  to: string | string[];
-  data: Record<string, any>;
-  language?: string;
-  priority?: 'low' | 'normal' | 'high';
-  url: string;
-}
 
 @Service()
 export class NotificationClientService {

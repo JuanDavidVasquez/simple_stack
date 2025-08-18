@@ -7,7 +7,7 @@ import { createLocalizedProxy } from "../shared/utils/controller-proxy.util";
 import { AUTH_TABLE_NAME } from "../core/config/auth-table.config";
 import setupLogger from "../shared/utils/logger";
 import { config } from "../core/config/env";
-import { NotificationClientService } from "../api/notifications/notification-client.service";
+import { NotificationClientService } from "../adapters/notifications/notification-client.service";
 
 const logger = setupLogger({
   ...config.logging,

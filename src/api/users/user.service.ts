@@ -7,7 +7,7 @@ import { config } from '../../core/config/env';
 import { CreateUserData, createUserSchema, getPasswordSchemaByRole, UpdateUserData, updateUserSchema } from '../../shared/schemas/password.schema';
 import BcryptUtil from '../../shared/utils/bcrypt.util';
 import { User } from '../../core/database/entities/entities/user.entity';
-import { NotificationClientService } from '../notifications/notification-client.service';
+import { NotificationClientService } from '../../adapters/notifications/notification-client.service';
 import { Inject, Service } from 'typedi';
 
 @Service()

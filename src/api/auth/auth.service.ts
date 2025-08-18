@@ -7,7 +7,7 @@ import BcryptUtil from '../../shared/utils/bcrypt.util';
 import setupLogger from '../../shared/utils/logger';
 import { Repository } from 'typeorm';
 import { AUTH_TABLE_NAME } from '../../core/config/user-table.config';
-import { NotificationClientService } from '../notifications/notification-client.service';
+import { NotificationClientService } from '../../adapters/notifications/notification-client.service';
 import { SupportedLanguage } from '../../i18n';
 import { Service } from 'typedi';
 

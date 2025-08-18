@@ -1,5 +1,5 @@
 import { Container } from 'typedi';
-import { NotificationClientService } from '../notifications/notification-client.service';
+import { NotificationClientService } from '../../adapters/notifications/notification-client.service';
 import { UserRepository } from './user.repository';
 import { UserController } from './user.controller';
 import { AppModule } from '../../modules';
