@@ -26,7 +26,6 @@ export class Server {
         this.app = express();
         this.logger = setupLogger(config.logging);
         // ✅ REGISTRO GLOBAL
-        AppModule.register();
         this.databaseManager = Container.get(DatabaseManager);  
     }
 
@@ -202,7 +201,12 @@ export class Server {
 
     private async setupRoutes(): Promise<void> {
         // Configurar rutas de la API
-        const router = await apiRoutes();
+        const router = express.Router();
+
+        // Registrar los módulos sobre este router
+        await AppModule.register(router);
+
+        // Montar en la app
         this.app.use(config.api.prefix, router);
 
         // Ruta de health check

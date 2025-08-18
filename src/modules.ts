@@ -1,19 +1,28 @@
-// src/modules.ts 
+import { Router } from 'express';
 import { UserModule } from './api/users/user.module';
-// ⚙️ Si tienes otros módulos, los importas igual:
-// import { NotificationModule } from './api/notifications/notification.module';
-// import { AuthModule } from './api/auth/auth.module';
+import { AuthModule } from './api/auth/auth.module';
 
 export class AppModule {
-  static register() {
+  private static registeredModules: string[] = [];
+
+  static async register(app: Router) {
     console.log('[AppModule] Registrando módulos...');
+    this.registeredModules = [];
 
-    // ✅ Cada módulo se encarga de registrar sus dependencias
     UserModule.register();
-    // NotificationModule.register();
-    // AuthModule.register();
-    // Otros módulos...
+    this.registeredModules.push('UserModule');
+    app.use('/users', UserModule.routes());
 
-    console.log('[AppModule] Todos los módulos registrados.');
+    AuthModule.register();
+    this.registeredModules.push('AuthModule');
+    app.use('/auth', await AuthModule.routes());
+
+    console.log('[AppModule] Todos los módulos registrados:', this.registeredModules);
+  }
+
+  static assertModule(moduleName: string) {
+    if (!this.registeredModules.includes(moduleName)) {
+      throw new Error(`[AppModule] ❌ El módulo ${moduleName} no fue registrado.`);
+    }
   }
 }
