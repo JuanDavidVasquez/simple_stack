@@ -1,22 +1,34 @@
-// src/api/users/user.module.ts
-
 import { Container } from 'typedi';
 import { NotificationClientService } from '../notifications/notification-client.service';
 import { UserRepository } from './user.repository';
 import { UserController } from './user.controller';
+import { AppModule } from '../../modules';
+import { createUserRouter } from './user.routes';
+import { Router } from 'express';
 
 export class UserModule {
-    static register() {
-        Container.set('UserRepository', UserRepository);
+  private static router: Router;
 
-        // ✅ Registra el servicio de notificaciones como singleton
-        if (!Container.has(NotificationClientService)) {
-            Container.set(NotificationClientService, new NotificationClientService());
-        }
+  static register() {
+    console.log('[UserModule] Registrando dependencias...');
+    Container.set('UserRepository', UserRepository);
 
+    if (!Container.has(NotificationClientService)) {
+      Container.set(NotificationClientService, new NotificationClientService());
     }
+  }
 
-    static controller(): UserController {
-        return Container.get(UserController);
+  static controller(): UserController {
+    AppModule.assertModule('UserModule');
+    return Container.get(UserController);
+  }
+
+  static routes(): Router {
+    AppModule.assertModule('UserModule');
+
+    if (!this.router) {
+      this.router = createUserRouter(this.controller());
     }
+    return this.router;
+  }
 }

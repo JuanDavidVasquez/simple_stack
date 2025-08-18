@@ -8,39 +8,12 @@ import JwtUtil, { TokenPair } from '../../shared/utils/jwt.util';
 import { parseUserAgent } from '../../shared/utils/user-agent.util';
 import { geolocationService } from '../../shared/services/geolocation.service';
 import { UserSession } from '../../core/database/entities/entities/user-session.entity';
+import type { SessionConfig } from '../../shared/interfaces/session.interface';
+import { CreateSessionData, SessionInfo } from '../../shared/interfaces/session.interface';
+import { Service } from 'typedi';
 
-export interface SessionConfig {
-  maxConcurrentSessions?: number; // Máximo de sesiones concurrentes por usuario
-  sessionTimeout?: number; // Tiempo en minutos de inactividad antes de cerrar sesión
-  allowMultipleDevices?: boolean; // Permitir múltiples dispositivos
-  requireDeviceVerification?: boolean; // Requerir verificación para nuevos dispositivos
-  enableGeolocation?: boolean; // Habilitar geolocalización por IP
-}
 
-export interface CreateSessionData {
-  userId: string;
-  email: string;
-  role: string;
-  userAgent?: string;
-  ipAddress?: string;
-  deviceName?: string;
-  sourceTable?: string; // Tabla de origen del usuario
-}
-
-export interface SessionInfo {
-  sessionId: string;
-  deviceName?: string;
-  deviceType?: string;
-  browser?: string;
-  os?: string;
-  location?: string;
-  lastActivity?: Date;
-  createdAt: Date;
-  isActive: boolean;
-  isCurrent: boolean;
-  sourceTable?: string;
-}
-
+@Service()
 export class SessionService {
   private readonly logger = setupLogger({
     ...config.logging,
