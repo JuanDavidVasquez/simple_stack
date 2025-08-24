@@ -76,68 +76,72 @@ export class UserController {
     }
   };
 
-  createUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
-    this.logger.info('Received request to create user', { body: req.body });
-    const acceptLanguage = req.headers['accept-language'] || 'en';
-    try {
-      const userData = req.body;
-      userData.lenguaje = acceptLanguage;
-      const user = await this.userService.createUser(userData);
+ createUser = async (req: LocalizedRequest, res: Response): Promise<void> => {
+  this.logger.info('Received request to create user', { body: req.body });
+  const acceptLanguage = req.headers['accept-language'] || 'en';
+  
+  try {
+    const userData = req.body;
+    userData.lenguaje = acceptLanguage;
+    
+    this.logger.info('Creating user with data:', { email: userData.email, lenguaje: userData.lenguaje });
+    
+    const user = await this.userService.createUser(userData);
 
-      this.logger.info(`User created successfully with ID: ${user.id}`);
+    this.logger.info(`User created successfully with ID: ${user.id}`);
 
-      ResponseUtil.success(
-        req,
-        res,
-        'responses.user.created',
-        user,
-        201
-      );
+    // ✅ AGREGADO: return explícito después de respuesta exitosa
+    ResponseUtil.success(
+      req,
+      res,
+      'responses.user.created',
+      user,
+      201
+    );
+    return;
 
-    } catch (error) {
-      this.logger.error('Error creating user:', error);
+  } catch (error) {
+    this.logger.error('Error creating user:', error);
 
-      if (error instanceof Error) {
-        if (error.message.includes('email already exists')) {
-          ResponseUtil.error(
-            req,
-            res,
-            'errors.user.email_exists',
-            400
-          );
-          return;
-        }
-
-        if (error.message.includes('username already exists')) {
-          ResponseUtil.error(
-            req,
-            res,
-            'errors.user.username_exists',
-            400
-          );
-          return;
-        }
-
-        if (error.message.includes('Validation failed')) {
-          ResponseUtil.error(
-            req,
-            res,
-            'errors.general.validation_failed',
-            400
-          );
-          return;
-        }
+    if (error instanceof Error) {
+      if (error.message.includes('email already exists')) {
+        // ✅ AGREGADO: return explícito
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.user.email_exists',
+          400
+        );
+        return;
       }
 
-      // Error genérico
+      if (error.message.includes('username already exists')) {
+        ResponseUtil.error(
+          req,
+          res,
+          'errors.user.username_exists',
+          400
+        );
+        return;
+      }
+
       ResponseUtil.error(
         req,
         res,
-        'errors.general.internal_server',
-        500
+        'errors.general.validation_failed',
+        400
       );
+      return;
     }
-  };
+    ResponseUtil.error(
+      req,
+      res,
+      'errors.general.internal_server',
+      500
+    );
+    return;
+  }
+};
 
   getUserById = async (req: LocalizedRequest, res: Response): Promise<void> => {
     const userId = req.params.id;

@@ -97,7 +97,10 @@ export const createTestDataSource = (): DataSource => {
     synchronize: true,
     dropSchema: true,
     logging: false,
-    entities: [__dirname + "/../entities/**/*.entity{.ts,.js}"],
+    entities: [
+      __dirname + "/../entities/**/*.entity{.ts,.js}",
+      __dirname + "/../entities/entities/**/*.entity{.ts,.js}"
+    ],
     migrations: [],
   });
 };

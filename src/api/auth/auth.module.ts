@@ -1,7 +1,7 @@
 // src/api/auth/auth.module.ts
 import { Container } from 'typedi';
 import { AuthController } from './auth.controller';
-import { NotificationClientService } from '../notifications/notification-client.service';
+import { NotificationClientService } from '../../adapters/notifications/notification-client.service';
 import { AppModule } from '../../modules';
 import { createAuthRouter } from './auth.routes'; // 👈 tu archivo de rutas
 import { Router } from 'express';

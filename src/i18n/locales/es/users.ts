@@ -9,9 +9,9 @@ export const esUserTranslations: UserTranslations = {
       activated: 'Cuenta de usuario activada exitosamente',
       deactivated: 'Cuenta de usuario desactivada exitosamente',
       verified: 'Email del usuario verificado exitosamente',
-      role_updated: ({ role } = {}) => `Rol del usuario actualizado a ${role} exitosamente`,
+      role_updated: 'Rol del usuario actualizado a {{role}} exitosamente',
       retrieved: 'Usuario obtenido exitosamente',
-      list_retrieved: ({ count } = {}) => `${count} usuarios obtenidos exitosamente`
+      list_retrieved: '{{count}} usuarios obtenidos exitosamente',
     }
   },
   errors: {

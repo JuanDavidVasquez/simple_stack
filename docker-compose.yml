@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: mysql:latest
+    image: mysql:8.0
     container_name: plantilla_node_2025_mysql
     restart: always
     environment:
@@ -14,6 +14,25 @@ services:
       - mysql_data:/var/lib/mysql
     networks:
       - microservices
+    # Configuración mejorada para estabilidad
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=256M
+      --max-connections=1000
+      --innodb-flush-log-at-trx-commit=1
+      --sync-binlog=1
+      --innodb-log-buffer-size=32M
+      --wait-timeout=86400
+      --interactive-timeout=86400
+      --max-allowed-packet=64M
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+      start_period: 40s
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
@@ -23,10 +42,13 @@ services:
       PMA_HOST: mysql
       PMA_USER: admin
       PMA_PASSWORD: 2025*plantillA
+      PMA_ARBITRARY: 1
+      UPLOAD_LIMIT: 64M
     ports:
       - "8080:80"
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     networks:
       - microservices
 
@@ -64,8 +86,25 @@ services:
     depends_on:
       - redis
 
+  minio:
+    image: minio/minio:latest
+    container_name: plantilla_node_2025_minio
+    restart: always
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: 2025*plantillA
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - microservices
+
 volumes:
   mysql_data:
+  minio_data:
 
 networks:
   microservices:

@@ -125,14 +125,6 @@ export const resetPasswordSchema = z.object({
 });
 
 /**
- * Schema para login
- */
-export const loginSchema = z.object({
-  email: z.string().email({ message: 'Invalid email format' }),
-  password: z.string().min(1, { message: 'Password is required' }),
-});
-
-/**
  * Schema para creación de usuario
  */
 export const createUserSchema = z.object({
@@ -155,11 +147,8 @@ export const createUserSchema = z.object({
     .max(30, { message: 'Username must not exceed 30 characters' })
     .regex(/^[a-zA-Z0-9_]+$/, { 
       message: 'Username can only contain letters, numbers, and underscores' 
-    })
-    .optional(),
-  role: z.enum(['admin', 'user', 'doctor'], {
-    errorMap: () => ({ message: 'Invalid role. Must be admin, user, or doctor' })
-  }).optional(),
+    }),
+    role: z.string().min(1, { message: 'Role is required' }),
   isActive: z.boolean().optional(),
   isVerified: z.boolean().optional(),
   lenguaje: z.enum(['en', 'es'], {
@@ -194,9 +183,6 @@ export const updateUserSchema = z.object({
       message: 'Username can only contain letters, numbers, and underscores' 
     })
     .optional(),
-  role: z.enum(['admin', 'user', 'doctor'], {
-    errorMap: () => ({ message: 'Invalid role. Must be admin, user, or doctor' })
-  }).optional(),
   isActive: z.boolean().optional(),
   isVerified: z.boolean().optional(),
   lenguaje: z.enum(['en', 'es'], {
@@ -204,20 +190,6 @@ export const updateUserSchema = z.object({
   }).optional(),
 });
 
-/**
- * Función helper para validar contraseña según el rol del usuario
- */
-export const getPasswordSchemaByRole = (role?: string) => {
-  switch (role) {
-    case 'admin':
-      return strongPasswordSchema;
-    case 'doctor':
-      return passwordSchema;
-    case 'user':
-    default:
-      return passwordSchema;
-  }
-};
 
 /**
  * Tipos TypeScript derivados de los schemas
@@ -225,6 +197,5 @@ export const getPasswordSchemaByRole = (role?: string) => {
 export type PasswordValidation = z.infer<typeof passwordSchema>;
 export type ChangePasswordData = z.infer<typeof changePasswordSchema>;
 export type ResetPasswordData = z.infer<typeof resetPasswordSchema>;
-export type LoginData = z.infer<typeof loginSchema>;
 export type CreateUserData = z.infer<typeof createUserSchema>;
 export type UpdateUserData = z.infer<typeof updateUserSchema>;
