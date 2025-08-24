@@ -1,41 +1,19 @@
+// src/api/session/session.service.ts
 import { Repository } from 'typeorm';
-import { UserSession } from '../../core/database/entities/user-session.entity';
 import { DatabaseManager } from '../../core/config/database-manager';
 import { ApplicationError } from '../../shared/errors/application.error';
 import setupLogger from '../../shared/utils/logger';
 import { config } from '../../core/config/env';
 import JwtUtil, { TokenPair } from '../../shared/utils/jwt.util';
 import { parseUserAgent } from '../../shared/utils/user-agent.util';
+import { geolocationService } from '../../shared/services/geolocation.service';
+import { UserSession } from '../../core/database/entities/entities/user-session.entity';
+import type { SessionConfig } from '../../shared/interfaces/session.interface';
+import { CreateSessionData, SessionInfo } from '../../shared/interfaces/session.interface';
+import { Service } from 'typedi';
 
-export interface SessionConfig {
-  maxConcurrentSessions?: number; // Máximo de sesiones concurrentes por usuario
-  sessionTimeout?: number; // Tiempo en minutos de inactividad antes de cerrar sesión
-  allowMultipleDevices?: boolean; // Permitir múltiples dispositivos
-  requireDeviceVerification?: boolean; // Requerir verificación para nuevos dispositivos
-}
 
-export interface CreateSessionData {
-  userId: string;
-  email: string;
-  role: string;
-  userAgent?: string;
-  ipAddress?: string;
-  deviceName?: string;
-}
-
-export interface SessionInfo {
-  sessionId: string;
-  deviceName?: string;
-  deviceType?: string;
-  browser?: string;
-  os?: string;
-  location?: string;
-  lastActivity?: Date;
-  createdAt: Date;
-  isActive: boolean;
-  isCurrent: boolean;
-}
-
+@Service()
 export class SessionService {
   private readonly logger = setupLogger({
     ...config.logging,
@@ -47,6 +25,7 @@ export class SessionService {
     sessionTimeout: 30, // 30 minutos de inactividad
     allowMultipleDevices: true,
     requireDeviceVerification: false,
+    enableGeolocation: true, // Habilitar geolocalización por defecto
   };
 
   constructor(
@@ -59,10 +38,10 @@ export class SessionService {
   }
 
   /**
-   * Crea una nueva sesión para el usuario
+   * Crea una nueva sesión para el usuario con geolocalización y soporte multi-tabla
    */
   public async createSession(data: CreateSessionData): Promise<TokenPair & { sessionId: string }> {
-    this.logger.info(`Creating session for user ${data.userId}`);
+    this.logger.info(`Creating session for user ${data.userId} from table: ${data.sourceTable || 'unknown'}`);
 
     try {
       const config = { ...this.defaultConfig, ...this.sessionConfig };
@@ -73,14 +52,33 @@ export class SessionService {
         ? JwtUtil.generateDeviceId(data.userAgent, data.ipAddress)
         : undefined;
 
-      // Verificar límite de sesiones concurrentes
-      if (config.maxConcurrentSessions && config.maxConcurrentSessions > 0) {
-        await this.enforceSessionLimit(data.userId, config.maxConcurrentSessions);
+      // Obtener ubicación de la IP
+      let location: string | undefined;
+      if (config.enableGeolocation && data.ipAddress) {
+        try {
+          location = await geolocationService.getLocationFromIP(data.ipAddress);
+          this.logger.debug(`Location determined for IP ${data.ipAddress}: ${location || 'Unknown'}`);
+        } catch (error) {
+          this.logger.warn(`Failed to get location for IP ${data.ipAddress}:`, error);
+        }
       }
 
-      // Si no se permiten múltiples dispositivos, cerrar otras sesiones
+      // Verificar límite de sesiones concurrentes POR TABLA
+      if (config.maxConcurrentSessions && config.maxConcurrentSessions > 0) {
+        await this.enforceSessionLimitFromTable(
+          data.userId, 
+          data.sourceTable || 'users', 
+          config.maxConcurrentSessions
+        );
+      }
+
+      // Si no se permiten múltiples dispositivos, cerrar otras sesiones DE ESTA TABLA
       if (!config.allowMultipleDevices) {
-        await this.revokeAllUserSessions(data.userId, 'new_device_login');
+        await this.revokeAllUserSessionsFromTable(
+          data.userId, 
+          data.sourceTable || 'users', 
+          'new_device_login'
+        );
       }
 
       // Generar tokens
@@ -93,11 +91,14 @@ export class SessionService {
         deviceId,
       });
 
-      // Crear registro de sesión
+      // Crear registro de sesión con información completa
       const session = this.sessionRepository.create({
         sessionId,
         userId: data.userId,
         refreshToken: tokenPair.refreshToken,
+        sourceTable: data.sourceTable || 'users',
+        userEmail: data.email,
+        userRole: data.role,
         deviceId,
         deviceName: data.deviceName || deviceInfo.deviceName,
         deviceType: deviceInfo.deviceType,
@@ -106,7 +107,7 @@ export class SessionService {
         os: deviceInfo.os,
         osVersion: deviceInfo.osVersion,
         ipAddress: data.ipAddress,
-        location: await this.getLocationFromIP(data.ipAddress),
+        location,
         isActive: true,
         lastActivity: new Date(),
         expiresAt: tokenPair.refreshExpiresAt,
@@ -114,7 +115,7 @@ export class SessionService {
 
       await this.sessionRepository.save(session);
 
-      this.logger.info(`Session created successfully for user ${data.userId}`);
+      this.logger.info(`Session created successfully for user ${data.userId} from table: ${data.sourceTable}${location ? ` (${location})` : ''}`);
       return {
         ...tokenPair,
         sessionId,
@@ -235,6 +236,40 @@ export class SessionService {
   }
 
   /**
+   * Revoca todas las sesiones de un usuario de una tabla específica
+   */
+  public async revokeAllUserSessionsFromTable(
+    userId: string, 
+    sourceTable: string, 
+    reason: string = 'user_request'
+  ): Promise<number> {
+    this.logger.info(`Revoking all sessions for user ${userId} from table ${sourceTable}`);
+
+    try {
+      const result = await this.sessionRepository.update(
+        { 
+          userId, 
+          sourceTable, 
+          isActive: true 
+        },
+        {
+          isActive: false,
+          revokedAt: new Date(),
+          revokedReason: reason,
+        }
+      );
+
+      const affectedCount = result.affected || 0;
+      this.logger.info(`Revoked ${affectedCount} sessions for user ${userId} from table ${sourceTable}`);
+      return affectedCount;
+
+    } catch (error) {
+      this.logger.error(`Error revoking user sessions from table ${sourceTable}:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Obtiene todas las sesiones activas de un usuario
    */
   public async getUserSessions(userId: string, currentSessionId?: string): Promise<SessionInfo[]> {
@@ -257,10 +292,51 @@ export class SessionService {
         createdAt: session.createdAt,
         isActive: session.isActive,
         isCurrent: session.sessionId === currentSessionId,
+        sourceTable: session.sourceTable,
       }));
 
     } catch (error) {
       this.logger.error('Error getting user sessions:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene todas las sesiones activas de un usuario de una tabla específica
+   */
+  public async getUserSessionsFromTable(
+    userId: string, 
+    sourceTable: string, 
+    currentSessionId?: string
+  ): Promise<SessionInfo[]> {
+    this.logger.info(`Getting sessions for user ${userId} from table ${sourceTable}`);
+
+    try {
+      const sessions = await this.sessionRepository.find({
+        where: { 
+          userId, 
+          sourceTable, 
+          isActive: true 
+        },
+        order: { lastActivity: 'DESC' },
+      });
+
+      return sessions.map(session => ({
+        sessionId: session.sessionId,
+        deviceName: session.deviceName,
+        deviceType: session.deviceType,
+        browser: session.browser,
+        os: session.os,
+        location: session.location,
+        lastActivity: session.lastActivity,
+        createdAt: session.createdAt,
+        isActive: session.isActive,
+        isCurrent: session.sessionId === currentSessionId,
+        sourceTable: session.sourceTable,
+      }));
+
+    } catch (error) {
+      this.logger.error(`Error getting user sessions from table ${sourceTable}:`, error);
       throw error;
     }
   }
@@ -326,6 +402,33 @@ export class SessionService {
   }
 
   /**
+   * Aplica el límite de sesiones concurrentes para una tabla específica
+   */
+  private async enforceSessionLimitFromTable(
+    userId: string, 
+    sourceTable: string, 
+    maxSessions: number
+  ): Promise<void> {
+    const activeSessions = await this.sessionRepository.find({
+      where: { 
+        userId, 
+        sourceTable, 
+        isActive: true 
+      },
+      order: { lastActivity: 'ASC' }, // Ordenar por actividad, más antiguas primero
+    });
+
+    if (activeSessions.length >= maxSessions) {
+      // Cerrar las sesiones más antiguas de esta tabla
+      const sessionsToRevoke = activeSessions.slice(0, activeSessions.length - maxSessions + 1);
+      
+      for (const session of sessionsToRevoke) {
+        await this.revokeSession(session.sessionId, 'session_limit_exceeded');
+      }
+    }
+  }
+
+  /**
    * Limpia sesiones expiradas (para ejecutar periódicamente)
    */
   public async cleanupExpiredSessions(): Promise<number> {
@@ -355,11 +458,162 @@ export class SessionService {
   }
 
   /**
-   * Obtiene la ubicación aproximada desde la IP (implementación básica)
+   * Limpia sesiones expiradas de una tabla específica
    */
-  private async getLocationFromIP(ipAddress?: string): Promise<string | undefined> {
-    // Aquí podrías integrar un servicio de geolocalización como ipapi.co
-    // Por ahora retornamos undefined
-    return undefined;
+  public async cleanupExpiredSessionsFromTable(sourceTable: string): Promise<number> {
+    this.logger.info(`Cleaning up expired sessions from table ${sourceTable}`);
+
+    try {
+      const result = await this.sessionRepository.update(
+        {
+          sourceTable,
+          isActive: true,
+          expiresAt: new Date(),
+        },
+        {
+          isActive: false,
+          revokedAt: new Date(),
+          revokedReason: 'expired',
+        }
+      );
+
+      const affectedCount = result.affected || 0;
+      this.logger.info(`Cleaned up ${affectedCount} expired sessions from table ${sourceTable}`);
+      return affectedCount;
+
+    } catch (error) {
+      this.logger.error(`Error cleaning up expired sessions from table ${sourceTable}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene estadísticas de sesiones por tabla
+   */
+  public async getSessionStatsByTable(): Promise<Record<string, {
+    activeSessions: number;
+    totalSessions: number;
+    uniqueUsers: number;
+  }>> {
+    try {
+      const stats = await this.sessionRepository
+        .createQueryBuilder('session')
+        .select([
+          'session.sourceTable as sourceTable',
+          'COUNT(*) as totalSessions',
+          'SUM(CASE WHEN session.isActive = true THEN 1 ELSE 0 END) as activeSessions',
+          'COUNT(DISTINCT session.userId) as uniqueUsers'
+        ])
+        .groupBy('session.sourceTable')
+        .getRawMany();
+
+      const result: Record<string, any> = {};
+      
+      stats.forEach(stat => {
+        result[stat.sourceTable] = {
+          activeSessions: parseInt(stat.activeSessions),
+          totalSessions: parseInt(stat.totalSessions),
+          uniqueUsers: parseInt(stat.uniqueUsers)
+        };
+      });
+
+      return result;
+
+    } catch (error) {
+      this.logger.error('Error getting session stats by table:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Busca un usuario por email en sesiones activas (útil para validaciones cruzadas)
+   */
+  public async findActiveSessionsByEmail(email: string, sourceTable?: string): Promise<SessionInfo[]> {
+    try {
+      const whereCondition: any = {
+        userEmail: email.toLowerCase(),
+        isActive: true
+      };
+
+      if (sourceTable) {
+        whereCondition.sourceTable = sourceTable;
+      }
+
+      const sessions = await this.sessionRepository.find({
+        where: whereCondition,
+        order: { lastActivity: 'DESC' },
+      });
+
+      return sessions.map(session => ({
+        sessionId: session.sessionId,
+        deviceName: session.deviceName,
+        deviceType: session.deviceType,
+        browser: session.browser,
+        os: session.os,
+        location: session.location,
+        lastActivity: session.lastActivity,
+        createdAt: session.createdAt,
+        isActive: session.isActive,
+        isCurrent: false,
+        sourceTable: session.sourceTable,
+      }));
+
+    } catch (error) {
+      this.logger.error('Error finding active sessions by email:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene estadísticas de ubicaciones
+   */
+  public async getLocationStats(sourceTable?: string): Promise<Record<string, number>> {
+    try {
+      const whereCondition: any = { isActive: true };
+      if (sourceTable) {
+        whereCondition.sourceTable = sourceTable;
+      }
+
+      const sessions = await this.sessionRepository.find({
+        where: whereCondition,
+        select: ['location']
+      });
+
+      const locationCounts: Record<string, number> = {};
+      
+      sessions.forEach(session => {
+        const location = session.location || 'Unknown';
+        locationCounts[location] = (locationCounts[location] || 0) + 1;
+      });
+
+      return locationCounts;
+
+    } catch (error) {
+      this.logger.error('Error getting location stats:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Limpia caché de geolocalización
+   */
+  public clearGeolocationCache(): void {
+    geolocationService.clearCache();
+    this.logger.info('Geolocation cache cleared');
+  }
+
+  /**
+   * Obtiene estadísticas completas del servicio
+   */
+  public getServiceStats(): any {
+    const geoStats = geolocationService.getCacheStats();
+    
+    return {
+      geolocation: {
+        cacheSize: geoStats.size,
+        oldestCacheEntry: geoStats.oldestEntry ? new Date(geoStats.oldestEntry) : null,
+        newestCacheEntry: geoStats.newestEntry ? new Date(geoStats.newestEntry) : null,
+      }
+    };
   }
 }

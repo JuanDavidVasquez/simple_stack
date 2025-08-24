@@ -15,5 +15,5 @@
         "isolatedModules": true,
         "forceConsistentCasingInFileNames": true
     },
-    "include": ["src/**/*.ts", "tests/unit/email-debug.spec.ts", "scripts/encript-frontend-key.ts"]
+    "include": ["src/**/*.ts", "tests/unit/email-debug.spec.ts", "src/scripts/encript-frontend-key.ts"]
 }

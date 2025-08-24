@@ -9,3 +9,5 @@ logs/
 /certs/*.key
 base.sh
 docker-compose.override.yml
+serviceAccountKey.json.json
+test-payloads/

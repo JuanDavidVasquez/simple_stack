@@ -1,50 +1,56 @@
 import z from 'zod';
-import { UserRepository } from '../../api/users/user.repository';
 import { DatabaseManager } from '../../core/config/database-manager';
 import { config } from '../../core/config/env';
-import { User } from '../../core/database/entities/user.entity';
 import { ApplicationError } from '../../shared/errors/application.error';
 import { ChangePasswordData, changePasswordSchema, getPasswordSchemaByRole, LoginData, loginSchema } from '../../shared/schemas/password.schema';
 import BcryptUtil from '../../shared/utils/bcrypt.util';
 import setupLogger from '../../shared/utils/logger';
-import { EmailService, SupportedLanguage } from '../../templates/email.service';
+import { Repository } from 'typeorm';
+import { AUTH_TABLE_NAME } from '../../core/config/user-table.config';
+import { NotificationClientService } from '../notifications/notification-client.service';
+import { SupportedLanguage } from '../../i18n';
+import { Service } from 'typedi';
 
-
+@Service()
 export class AuthService {
-
-
   private readonly logger = setupLogger({
     ...config.logging,
     dir: `${config.logging.dir}/services/auth`,
   });
 
+  private authRepository: Repository<any>;
+
   constructor(
     private readonly databaseManager: DatabaseManager,
-    private readonly userRepository: typeof UserRepository,
-     private readonly emailService: EmailService
+    private readonly notificationService: NotificationClientService
   ) {
-    this.logger.info('AuthService initialized');
+    // Inicializar el repositorio dinámico con la tabla configurada
+    const connection = this.databaseManager.getConnection();
+    this.authRepository = connection.getRepository(AUTH_TABLE_NAME);
+
+    this.logger.info(`AuthService initialized for table: ${AUTH_TABLE_NAME}`);
   }
 
   /**
    * Autentica un usuario con email y contraseña
    */
-  public async authenticateUser(loginData: LoginData): Promise<User> {
-    this.logger.info(`Authenticating user with email: ${loginData.email}`);
-    
+  public async authenticateUser(loginData: LoginData): Promise<any> {
+    this.logger.info(`Authenticating user with email: ${loginData.email} from table: ${AUTH_TABLE_NAME}`);
+
     try {
       // Validar datos de login con Zod
       const validatedData = loginSchema.parse(loginData);
-      
-      // Buscar usuario por email
-      const user = await this.userRepository.findOne({ 
-        where: { email: validatedData.email.toLowerCase() },
-        select: [
-          'id', 'email', 'password', 'firstName', 'lastName', 
-          'role', 'isActive', 'isVerified', 'loginAttempts', 
-          'lockedUntil', 'username'
-        ]
-      });
+
+      // Buscar usuario por email en la tabla dinámica
+      const user = await this.authRepository
+        .createQueryBuilder('user')
+        .select([
+          'user.id', 'user.email', 'user.password', 'user.firstName', 'user.lastName',
+          'user.role', 'user.isActive', 'user.isVerified', 'user.loginAttempts',
+          'user.lockedUntil', 'user.username'
+        ])
+        .where('user.email = :email', { email: validatedData.email.toLowerCase() })
+        .getOne();
 
       if (!user) {
         throw new ApplicationError('Invalid credentials');
@@ -63,7 +69,7 @@ export class AuthService {
 
       // Verificar la contraseña
       const isPasswordValid = await BcryptUtil.comparePassword(validatedData.password, user.password);
-      
+
       if (!isPasswordValid) {
         // Incrementar intentos de login
         await this.handleFailedLogin(user);
@@ -75,17 +81,17 @@ export class AuthService {
 
       // Remover la contraseña de la respuesta
       const { password: _, ...userResponse } = user;
-      
-      this.logger.info(`User ${user.id} authenticated successfully`);
-      return userResponse as User;
-      
+
+      this.logger.info(`User ${user.id} from table ${AUTH_TABLE_NAME} authenticated successfully`);
+      return userResponse as any;
+
     } catch (error) {
       if (error instanceof z.ZodError) {
         const errorMessages = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
         throw new ApplicationError(`Validation failed: ${errorMessages.join(', ')}`);
       }
-      
-      this.logger.error(`Error authenticating user:`, error);
+
+      this.logger.error(`Error authenticating user from table ${AUTH_TABLE_NAME}:`, error);
       throw error;
     }
   }
@@ -94,17 +100,18 @@ export class AuthService {
    * Cambia la contraseña de un usuario
    */
   public async changePassword(userId: string, changeData: ChangePasswordData): Promise<void> {
-    this.logger.info(`Changing password for user ${userId}`);
-    
+    this.logger.info(`Changing password for user ${userId} in table ${AUTH_TABLE_NAME}`);
+
     try {
       // Validar datos con Zod
       const validatedData = changePasswordSchema.parse(changeData);
-      
+
       // Obtener usuario con contraseña
-      const user = await this.userRepository.findOne({ 
-        where: { id: userId },
-        select: ['id', 'password', 'role']
-      });
+      const user = await this.authRepository
+        .createQueryBuilder('user')
+        .select(['user.id', 'user.password', 'user.role'])
+        .where('user.id = :id', { id: userId })
+        .getOne();
 
       if (!user) {
         throw new ApplicationError('User not found');
@@ -112,10 +119,10 @@ export class AuthService {
 
       // Verificar contraseña actual
       const isCurrentPasswordValid = await BcryptUtil.comparePassword(
-        validatedData.currentPassword, 
+        validatedData.currentPassword,
         user.password
       );
-      
+
       if (!isCurrentPasswordValid) {
         throw new ApplicationError('Current password is incorrect');
       }
@@ -126,10 +133,10 @@ export class AuthService {
 
       // Verificar que la nueva contraseña sea diferente
       const isSamePassword = await BcryptUtil.comparePassword(
-        validatedData.newPassword, 
+        validatedData.newPassword,
         user.password
       );
-      
+
       if (isSamePassword) {
         throw new ApplicationError('New password must be different from current password');
       }
@@ -137,22 +144,21 @@ export class AuthService {
       // Encriptar nueva contraseña
       const hashedNewPassword = await BcryptUtil.hashPassword(validatedData.newPassword);
 
-      // Actualizar contraseña
-      await this.userRepository.update(userId, { 
+      // Actualizar contraseña en la tabla dinámica
+      await this.authRepository.update(userId, {
         password: hashedNewPassword,
-        // Opcional: agregar timestamp de último cambio de contraseña
         updatedAt: new Date()
       });
-      
-      this.logger.info(`Password changed successfully for user ${userId}`);
-      
+
+      this.logger.info(`Password changed successfully for user ${userId} in table ${AUTH_TABLE_NAME}`);
+
     } catch (error) {
       if (error instanceof z.ZodError) {
         const errorMessages = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
         throw new ApplicationError(`Validation failed: ${errorMessages.join(', ')}`);
       }
-      
-      this.logger.error(`Error changing password for user ${userId}:`, error);
+
+      this.logger.error(`Error changing password for user ${userId} in table ${AUTH_TABLE_NAME}:`, error);
       throw error;
     }
   }
@@ -160,18 +166,19 @@ export class AuthService {
   /**
    * Genera y establece una nueva contraseña temporal para un usuario
    */
-  public async resetPassword(email: string, acceptLanguage:string): Promise<{ success: boolean; temporaryPassword?: string }> {
-    this.logger.info(`Resetting password for user with email: ${email}`);
-    
+  public async resetPassword(email: string, acceptLanguage: string): Promise<{ success: boolean; temporaryPassword?: string }> {
+    this.logger.info(`Resetting password for user with email: ${email} from table ${AUTH_TABLE_NAME}`);
+
     try {
-      const user = await this.userRepository.findOne({ 
-        where: { email: email.toLowerCase() } 
-      });
-      
+      const user = await this.authRepository
+        .createQueryBuilder('user')
+        .where('user.email = :email', { email: email.toLowerCase() })
+        .getOne();
+
       if (!user) {
         // Por seguridad, no revelar si el email existe o no
-        this.logger.warn(`Password reset attempted for non-existent email: ${email}`);
-        return { 
+        this.logger.warn(`Password reset attempted for non-existent email: ${email} in table ${AUTH_TABLE_NAME}`);
+        return {
           success: true // Siempre devolver éxito por seguridad
         };
       }
@@ -185,39 +192,49 @@ export class AuthService {
       const resetExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
 
       // Actualizar usuario con nueva contraseña y token de reset
-      await this.userRepository.update(user.id, { 
+      await this.authRepository.update(user.id, {
         password: hashedPassword,
         resetPasswordToken: resetToken,
         resetPasswordExpires: resetExpiry,
-        // Opcional: marcar que debe cambiar contraseña en próximo login
         loginAttempts: 0, // Resetear intentos de login
         lockedUntil: null, // Desbloquear cuenta si estaba bloqueada
         updatedAt: new Date()
       });
 
-      this.logger.info(`Password reset successfully for user ${user.id}`);
-      
-      
-      // Email temporalmente la nueva contraseña al usuario
-      await this.emailService.sendEmail({
-          to: user.email,
-          template: 'password-reset',
-          language: (['en', 'es'].includes(acceptLanguage) ? acceptLanguage : 'en') as SupportedLanguage,
-          data:{
-            firstName: user.firstName,
-            temporaryPassword: temporaryPassword,
-            resetToken: resetToken,
-            resetExpiry: resetExpiry.toISOString()
-          }
-      })
+      this.logger.info(`Password reset successfully for user ${user.id} in table ${AUTH_TABLE_NAME}`);
+
+      // Enviar email con la nueva contraseña al usuario
+      const sendEmail = await this.notificationService.send({
+        type: 'email',
+        to: user.email,
+        priority: 'normal',
+        url: 'emails/password-reset',
+        language: (['en', 'es'].includes(acceptLanguage) ? acceptLanguage : 'en') as SupportedLanguage,
+        data: {
+          firstName: user.firstName,
+          temporaryPassword: temporaryPassword,
+          resetToken: resetToken,
+          resetExpiry: resetExpiry.toISOString(),
+          year: new Date().getFullYear(),
+          companyLogoUrl: `${config.app.baseUrl}/images/logo.png`,
+          companyName: config.app.name,
+        }
+      });
+
+
+      if (!sendEmail) {
+        this.logger.warn(`Failed to send password reset email to ${user.email}`);
+      } else {
+        this.logger.info(`Password reset email sent successfully to ${user.email}`);
+      }
 
       return {
         success: true,
-        ...(config.app.env === 'development' && { temporaryPassword })
+        ...(config.app.env === 'local' && { temporaryPassword })
       };
-      
+
     } catch (error) {
-      this.logger.error(`Error resetting password for email ${email}:`, error);
+      this.logger.error(`Error resetting password for email ${email} in table ${AUTH_TABLE_NAME}:`, error);
       throw error;
     }
   }
@@ -227,10 +244,11 @@ export class AuthService {
    */
   public async canAttemptLogin(email: string): Promise<{ canAttempt: boolean; lockTimeRemaining?: number }> {
     try {
-      const user = await this.userRepository.findOne({
-        where: { email: email.toLowerCase() },
-        select: ['id', 'lockedUntil', 'loginAttempts', 'isActive']
-      });
+      const user = await this.authRepository
+        .createQueryBuilder('user')
+        .select(['user.id', 'user.lockedUntil', 'user.loginAttempts', 'user.isActive'])
+        .where('user.email = :email', { email: email.toLowerCase() })
+        .getOne();
 
       if (!user || !user.isActive) {
         return { canAttempt: false };
@@ -238,16 +256,16 @@ export class AuthService {
 
       if (user.lockedUntil && user.lockedUntil > new Date()) {
         const lockTimeRemaining = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60000);
-        return { 
-          canAttempt: false, 
-          lockTimeRemaining 
+        return {
+          canAttempt: false,
+          lockTimeRemaining
         };
       }
 
       return { canAttempt: true };
-      
+
     } catch (error) {
-      this.logger.error(`Error checking login attempt for email ${email}:`, error);
+      this.logger.error(`Error checking login attempt for email ${email} in table ${AUTH_TABLE_NAME}:`, error);
       return { canAttempt: false };
     }
   }
@@ -256,19 +274,19 @@ export class AuthService {
    * Desbloquea manualmente una cuenta (para administradores)
    */
   public async unlockAccount(userId: string): Promise<void> {
-    this.logger.info(`Manually unlocking account for user ${userId}`);
-    
+    this.logger.info(`Manually unlocking account for user ${userId} in table ${AUTH_TABLE_NAME}`);
+
     try {
-      await this.userRepository.update(userId, {
+      await this.authRepository.update(userId, {
         loginAttempts: 0,
         lockedUntil: null,
         updatedAt: new Date()
       });
-      
-      this.logger.info(`Account unlocked successfully for user ${userId}`);
-      
+
+      this.logger.info(`Account unlocked successfully for user ${userId} in table ${AUTH_TABLE_NAME}`);
+
     } catch (error) {
-      this.logger.error(`Error unlocking account for user ${userId}:`, error);
+      this.logger.error(`Error unlocking account for user ${userId} in table ${AUTH_TABLE_NAME}:`, error);
       throw error;
     }
   }
@@ -284,17 +302,18 @@ export class AuthService {
     hasResetToken: boolean;
   }> {
     try {
-      const user = await this.userRepository.findOne({
-        where: { id: userId },
-        select: ['loginAttempts', 'lockedUntil', 'lastLoginAt', 'resetPasswordToken']
-      });
+      const user = await this.authRepository
+        .createQueryBuilder('user')
+        .select(['user.loginAttempts', 'user.lockedUntil', 'user.lastLoginAt', 'user.resetPasswordToken'])
+        .where('user.id = :id', { id: userId })
+        .getOne();
 
       if (!user) {
         throw new ApplicationError('User not found');
       }
 
       const isLocked = user.lockedUntil ? user.lockedUntil > new Date() : false;
-      const lockTimeRemaining = isLocked 
+      const lockTimeRemaining = isLocked
         ? Math.ceil((user.lockedUntil!.getTime() - Date.now()) / 60000)
         : undefined;
 
@@ -305,9 +324,9 @@ export class AuthService {
         lastLoginAt: user.lastLoginAt || undefined,
         hasResetToken: !!user.resetPasswordToken
       };
-      
+
     } catch (error) {
-      this.logger.error(`Error getting security stats for user ${userId}:`, error);
+      this.logger.error(`Error getting security stats for user ${userId} in table ${AUTH_TABLE_NAME}:`, error);
       throw error;
     }
   }
@@ -315,41 +334,41 @@ export class AuthService {
   /**
    * Maneja intentos de login fallidos
    */
-  private async handleFailedLogin(user: User): Promise<void> {
+  private async handleFailedLogin(user: any): Promise<void> {
     const maxAttempts = 5;
     const lockoutDuration = 15 * 60 * 1000; // 15 minutos
 
     const newAttempts = (user.loginAttempts || 0) + 1;
-    
+
     if (newAttempts >= maxAttempts) {
       // Bloquear cuenta temporalmente
       const lockedUntil = new Date(Date.now() + lockoutDuration);
-      await this.userRepository.update(user.id, {
+      await this.authRepository.update(user.id, {
         loginAttempts: newAttempts,
         lockedUntil
       });
-      
-      this.logger.warn(`User ${user.id} account locked due to ${newAttempts} failed login attempts`);
+
+      this.logger.warn(`User ${user.id} account locked due to ${newAttempts} failed login attempts in table ${AUTH_TABLE_NAME}`);
     } else {
-      await this.userRepository.update(user.id, {
+      await this.authRepository.update(user.id, {
         loginAttempts: newAttempts
       });
-      
-      this.logger.info(`Failed login attempt ${newAttempts}/${maxAttempts} for user ${user.id}`);
+
+      this.logger.info(`Failed login attempt ${newAttempts}/${maxAttempts} for user ${user.id} in table ${AUTH_TABLE_NAME}`);
     }
   }
 
   /**
    * Maneja login exitoso
    */
-  private async handleSuccessfulLogin(user: User): Promise<void> {
-    await this.userRepository.update(user.id, {
+  private async handleSuccessfulLogin(user: any): Promise<void> {
+    await this.authRepository.update(user.id, {
       loginAttempts: 0,
       lockedUntil: null,
       lastLoginAt: new Date()
     });
 
-    this.logger.info(`Successful login for user ${user.id}, attempts reset`);
+    this.logger.info(`Successful login for user ${user.id} in table ${AUTH_TABLE_NAME}, attempts reset`);
   }
 
   /**
