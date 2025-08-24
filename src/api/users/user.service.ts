@@ -13,7 +13,7 @@ import { User, Veterinarian } from '../../core/database/entities';
 // Configuración dinámica basada en el tipo de entidad
 const AUTH_TABLE_NAME = process.env.AUTH_TABLE_NAME || 'users';
 
-// Mapeo de configuraciones específicas por entidad
+// +-+Mapeo de configuraciones específicas por entidad
 
 const ENTITY_CONFIGS: Record<string, any> = {
   'users': User,
