@@ -54,9 +54,9 @@ export interface UserTranslations {
       activated: string;
       deactivated: string;
       verified: string;
-      role_updated: TranslationFunction;
+      role_updated: string;
       retrieved: string;
-      list_retrieved: TranslationFunction;
+      list_retrieved: string;
     };
   };
   errors: {

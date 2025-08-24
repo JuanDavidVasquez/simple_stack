@@ -103,7 +103,7 @@ export const config = {
   },
 
   notificationApi: {
-    url: process.env.NOTIFICATION_API_URL || "http://localhost:5000/api/v1/",
+    url: process.env.NOTIFICATION_API_URL || "https://localhost:5000/api/v1/",
     serviceToken: process.env.NOTIFICATION_API_SERVICE_TOKEN || "default_service_token",
     serviceTokenExpiresIn: process.env.NOTIFICATION_API_SERVICE_TOKEN_EXPIRES_IN || "5m",
   },

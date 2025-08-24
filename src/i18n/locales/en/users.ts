@@ -9,9 +9,9 @@ export const enUserTranslations: UserTranslations = {
       activated: 'User account activated successfully',
       deactivated: 'User account deactivated successfully',
       verified: 'User email verified successfully',
-      role_updated: ({ role } = {}) => `User role updated to ${role} successfully`,
+      role_updated: 'User role updated to {{role}} successfully',
       retrieved: 'User retrieved successfully',
-      list_retrieved: ({ count } = {}) => `Retrieved ${count} users successfully`,
+      list_retrieved: 'Retrieved {{count}} users successfully',
     },
   },
   errors: {

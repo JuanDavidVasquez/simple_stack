@@ -23,7 +23,6 @@ export class NotificationClientService {
       timeout: 30000,
       headers: { 'Content-Type': 'application/json' },
     });
-
     this.client.interceptors.request.use(
       async (config) => {
         const token = await this.getValidToken();
@@ -53,7 +52,7 @@ export class NotificationClientService {
    */
   async send(payload: NotificationPayload): Promise<any> {
     try {
-      const response = await this.client.post(`/${payload.url}`, payload);
+      const response = await this.client.post(`${payload.url}`, payload);
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {

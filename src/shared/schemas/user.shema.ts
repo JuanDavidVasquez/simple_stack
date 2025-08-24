@@ -1,15 +1,13 @@
 import { z } from 'zod';
 import { UserRole } from '../../core/database/entities/enums/user-role.enum';
+import { passwordSchema } from './password.schema';
+import { emailSchema } from './email.shema';
 
 export const userSchema = z.object({
     id: z.string().uuid().optional(),
     username: z.string().min(1, { message: 'Username is required.' }),
-    email: z
-        .string()
-        .email({ message: 'Invalid email format.' })
-        .trim()
-        .toLowerCase(),
-    password: z.string().min(6, { message: 'Password must be at least 6 characters long.' }),
+    email: emailSchema,
+    password: passwordSchema,
     role: z.enum(Object.values(UserRole) as [string, ...string[]], { message: 'Invalid role.' }).optional(),
     firstName: z.string().min(1, { message: 'First name is required.' }),
     lastName: z.string().min(1, { message: 'Last name is required.' }),
